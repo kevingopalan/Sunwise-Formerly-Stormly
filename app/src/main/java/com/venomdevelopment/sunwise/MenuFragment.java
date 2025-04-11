@@ -15,10 +15,17 @@ import androidx.fragment.app.FragmentTransaction;
 public class MenuFragment extends Fragment {
 
     private Button btnAlerts;  // Declare the alerts button
+    private Button btnSettings;
+    private Button btnNews;
+    private Button btnSnow;
     private FragmentAlerts fragmentAlerts;  // Reference to FragmentAlerts
     private SettingsFragment fragmentSettings;
+    private NewsFragment fragmentNews;
+    private SnowDayFragment fragmentSnow;
+    private boolean isFragmentNewsAdded = false;
     private boolean isFragmentAlertsAdded = false;  // Track if FragmentAlerts is added
     private boolean isFragmentSettingsAdded = false;
+    private boolean isFragmentSnowAdded = false;
 
     @Nullable
     @Override
@@ -29,7 +36,9 @@ public class MenuFragment extends Fragment {
 
         // Initialize the button from the layout
         btnAlerts = view.findViewById(R.id.btnAlerts);
-        Button btnSettings = view.findViewById(R.id.btnSettings);
+        btnSettings = view.findViewById(R.id.btnSettings);
+        btnNews = view.findViewById(R.id.btnNews);
+        btnSnow = view.findViewById(R.id.btnSnow);
 
         // Set the click listener for the "Alerts" button
         btnAlerts.setOnClickListener(v -> {
@@ -43,6 +52,16 @@ public class MenuFragment extends Fragment {
             // Hide the other fragments
             hideOtherFragments();
             showFragmentSettings();
+        });
+        btnNews.setOnClickListener(v -> {
+            // Hide the other fragments
+            hideOtherFragments();
+            showFragmentNews();
+        });
+        btnSnow.setOnClickListener(v -> {
+            // Hide the other fragments
+            hideOtherFragments();
+            showFragmentSnow();
         });
 
         return view;
@@ -87,6 +106,8 @@ public class MenuFragment extends Fragment {
         // Get the fragments from the fragment manager
         Fragment alertsFragment = getFragmentManager().findFragmentByTag("alertsFragment");
         Fragment settingsFragment = getFragmentManager().findFragmentByTag("settingsFragment");
+        Fragment newsFragment = getFragmentManager().findFragmentByTag("newsFragment");
+        Fragment snowFragment = getFragmentManager().findFragmentByTag("snowFragment");
 
         // Hide the fragments
         if (alertsFragment != null) transaction.setCustomAnimations(
@@ -95,7 +116,9 @@ public class MenuFragment extends Fragment {
                 R.anim.fade_in,   // popEnter
                 R.anim.slide_out_top  // popExit
         ).hide(alertsFragment)
-        .hide(settingsFragment);
+        .hide(settingsFragment)
+        .hide(newsFragment)
+        .hide(snowFragment);
 
         // Commit the transaction
         transaction.commit();
@@ -129,9 +152,35 @@ public class MenuFragment extends Fragment {
         ).show(fragmentAlerts);  // Show FragmentAlerts
         transaction.commit();
     }
+    private void showFragmentNews() {
+        if (!isFragmentNewsAdded) {
+            fragmentNews = new NewsFragment();
+            FragmentTransaction transaction = getFragmentManager().beginTransaction();
+            transaction.add(R.id.flFragment, fragmentNews, "FragmentNews");
+            transaction.setCustomAnimations(
+                    R.anim.slide_in_top,  // enter
+                    R.anim.fade_out,  // exit
+                    R.anim.fade_in,   // popEnter
+                    R.anim.slide_out_top  // popExit
+            );
+            transaction.hide(fragmentNews); // Initially hide FragmentAlerts
+            transaction.commit();
+            isFragmentNewsAdded = true;
+        }
+
+        // Now, show FragmentAlerts
+        FragmentTransaction transaction = getFragmentManager().beginTransaction();
+        transaction.setCustomAnimations(
+                R.anim.slide_in_top,  // enter
+                R.anim.fade_out,  // exit
+                R.anim.fade_in,   // popEnter
+                R.anim.slide_out_top  // popExit
+        ).show(fragmentNews);  // Show FragmentAlerts
+        transaction.commit();
+    }
 
     private void showFragmentSettings() {
-        if (!isFragmentAlertsAdded) {
+        if (!isFragmentSettingsAdded) {
             fragmentSettings = new SettingsFragment();
             FragmentTransaction transaction = getFragmentManager().beginTransaction();
             transaction.add(R.id.flFragment, fragmentSettings, "FragmentSettings");
@@ -156,6 +205,31 @@ public class MenuFragment extends Fragment {
         ).show(fragmentSettings);  // Show FragmentAlerts
         transaction.commit();
     }
+    private void showFragmentSnow() {
+        if (!isFragmentSnowAdded) {
+            fragmentSnow = new SnowDayFragment();
+            FragmentTransaction transaction = getFragmentManager().beginTransaction();
+            transaction.add(R.id.flFragment, fragmentSnow, "FragmentSnow");
+            transaction.setCustomAnimations(
+                    R.anim.slide_in_top,  // enter
+                    R.anim.fade_out,  // exit
+                    R.anim.fade_in,   // popEnter
+                    R.anim.slide_out_top  // popExit
+            );
+            transaction.hide(fragmentSnow); // Initially hide FragmentSnow
+            transaction.commit();
+            isFragmentSnowAdded = true;
+        }
+        FragmentTransaction transaction = getFragmentManager().beginTransaction();
+        transaction.setCustomAnimations(
+                R.anim.slide_in_top,  // enter
+                R.anim.fade_out,  // exit
+                R.anim.fade_in,   // popEnter
+                R.anim.slide_out_top  // popExit
+        ).show(fragmentSnow);  // Show FragmentSnow
+        transaction.commit();
+    }
+
 
 
     // Optional: Hide FragmentAlerts when you navigate back to the MenuFragment
@@ -184,6 +258,28 @@ public class MenuFragment extends Fragment {
                     R.anim.slide_out_top  // popExit
             );
             transaction.hide(fragmentSettings);
+            transaction.commit();
+        }
+        if (fragmentNews != null) {
+            FragmentTransaction transaction = getFragmentManager().beginTransaction();
+            transaction.setCustomAnimations(
+                    R.anim.slide_in_top,  // enter
+                    R.anim.fade_out,  // exit
+                    R.anim.fade_in,   // popEnter
+                    R.anim.slide_out_top  // popExit
+            );
+            transaction.hide(fragmentNews);
+            transaction.commit();
+        }
+        if (fragmentSnow != null) {
+            FragmentTransaction transaction = getFragmentManager().beginTransaction();
+            transaction.setCustomAnimations(
+                    R.anim.slide_in_top,  // enter
+                    R.anim.fade_out,  // exit
+                    R.anim.fade_in,   // popEnter
+                    R.anim.slide_out_top  // popExit
+            );
+            transaction.hide(fragmentSnow);
             transaction.commit();
         }
     }

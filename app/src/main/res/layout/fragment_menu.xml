@@ -90,6 +90,22 @@
             android:textAllCaps="false"
             android:textAlignment="textStart"
             android:id="@+id/btnAlerts"/>
+        <androidx.appcompat.widget.AppCompatButton
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/btnAlerts"
+            android:drawablePadding="5dp"
+            android:padding="20dp"
+            android:layout_margin="20dp"
+            android:background="@drawable/main_background"
+            android:drawableLeft="@drawable/baseline_cloudy_snowing_24"
+            android:text = "Snow Day Calculator"
+            android:fontFamily="@font/montsemibold"
+            android:textColor="@color/white"
+            android:textAllCaps="false"
+            android:textAlignment="textStart"
+            android:id="@+id/btnSnow"/>
 
 
         <LinearLayout
@@ -98,7 +114,7 @@
             android:padding="20dp"
             android:layout_margin="20dp"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/btnAlerts"
+            app:layout_constraintTop_toBottomOf="@id/btnSnow"
             android:background="@drawable/gradientround"
             android:orientation="vertical">
             <TextView

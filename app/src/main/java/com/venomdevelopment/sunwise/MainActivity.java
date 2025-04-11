@@ -77,6 +77,11 @@ public class MainActivity extends AppCompatActivity
         if (fragmentAlerts != null) transaction.hide(fragmentAlerts);
         SettingsFragment fragmentSettings = (SettingsFragment) fragmentManager.findFragmentByTag("FragmentSettings");
         if (fragmentSettings != null) transaction.hide(fragmentSettings);
+        NewsFragment fragmentNews = (NewsFragment) fragmentManager.findFragmentByTag("FragmentNews");
+        if (fragmentNews != null) transaction.hide(fragmentNews);
+        SnowDayFragment fragmentSnow = (SnowDayFragment) fragmentManager.findFragmentByTag("FragmentSnow");
+        if (fragmentSnow != null) transaction.hide(fragmentSnow);
+
         switch (item.getItemId()) {
             case R.id.menu:
                 if (!menuFragment.isAdded()) {
