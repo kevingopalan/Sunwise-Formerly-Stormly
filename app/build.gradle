@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.androidApplication)
+    alias(libs.plugins.kotlinAndroid)
 }
 
 android {
@@ -29,6 +30,9 @@ android {
     buildFeatures {
         viewBinding true
     }
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
 }
 
 dependencies {
@@ -45,6 +49,7 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.10.1'
     //noinspection UseTomlInstead
     implementation 'com.github.bumptech.glide:glide:4.16.0'
+    implementation libs.core.ktx
     //noinspection UseTomlInstead
     annotationProcessor 'com.github.bumptech.glide:compiler:4.16.0'
     //noinspection UseTomlInstead

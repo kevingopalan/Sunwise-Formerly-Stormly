@@ -67,22 +67,6 @@
             android:padding="20dp"
             android:layout_margin="20dp"
             android:background="@drawable/main_background"
-            android:drawableLeft="@drawable/baseline_newspaper_24"
-            android:text = "News"
-            android:fontFamily="@font/montsemibold"
-            android:textColor="@color/white"
-            android:textAllCaps="false"
-            android:textAlignment="textStart"
-            android:id="@+id/btnNews"/>
-        <androidx.appcompat.widget.AppCompatButton
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/btnNews"
-            android:drawablePadding="5dp"
-            android:padding="20dp"
-            android:layout_margin="20dp"
-            android:background="@drawable/main_background"
             android:drawableLeft="@drawable/baseline_warning_24"
             android:text = "Alerts"
             android:fontFamily="@font/montsemibold"
@@ -120,7 +104,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Get Sunwise Pro"
+                android:text="Tired of ads?"
                 android:fontFamily="@font/montsemibold"
                 android:textColor="@color/white"
                 android:textSize="24dp"/>
@@ -130,12 +114,12 @@
                 android:fontFamily="@font/montsemibold"
                 android:textColor="@color/white"
                 android:textSize="16dp"
-                android:text="and get access to 144+ hours of hourly forecast, 72 hours of hourly forecast graphs, daily weather summaries, and more."/>
+                android:text="Now you're not. Only $1.49."/>
             <androidx.appcompat.widget.AppCompatButton
                 android:layout_width="wrap_content"
                 android:layout_height="match_parent"
                 android:layout_marginTop="10dp"
-                android:text = "Get from Google Play"
+                android:text = "Let's go! $1.49"
                 android:textColor="#ffffff"
                 android:drawablePadding="5dp"
                 android:textAllCaps="false"
