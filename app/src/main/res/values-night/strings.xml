@@ -1,7 +1,7 @@
 <resources>
-    <string name="app_name">Stormly</string>
+    <string name="app_name">Sunwise</string>
     <string name="title_home">Home</string>
     <string name="title_dashboard">Forecast</string>
     <string name="title_notifications">Settings</string>
-    <string name="stormly">Sunwise</string>
+    <string name="sunwise">Sunwise</string>
 </resources>

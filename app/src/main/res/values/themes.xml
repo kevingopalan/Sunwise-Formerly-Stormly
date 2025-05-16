@@ -1,7 +1,6 @@
 <resources xmlns:tools="http://schemas.android.com/tools" xmlns:android="http://schemas.android.com/apk/res/android" android:forceDarkAllowed="true">
     <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="android:fontFamily">@font/montsemibold</item>
-        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
         <item name="android:fitsSystemWindows">true</item>
         <item name="colorPrimary">@color/md_theme_primary</item>
         <item name="colorOnPrimary">@color/md_theme_onPrimary</item>

@@ -1,100 +1,74 @@
-package com.venomdevelopment.sunwise;
+package com.venomdevelopment.sunwise
 
-import android.os.Bundle;
-import android.util.Log;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.Spinner;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.os.Bundle
+import android.util.Log
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.*
+import androidx.fragment.app.Fragment
 
-import androidx.fragment.app.Fragment;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
+class SnowDayFragment : Fragment() {
 
-public class SnowDayFragment extends Fragment {
+    private lateinit var zipcodeEditText: EditText
+    private lateinit var snowdaysEditText: EditText
+    private lateinit var schoolTypeSpinner: Spinner
+    private lateinit var calculateButton: Button
+    private lateinit var predictionToday: TextView
+    private lateinit var predictionTomorrow: TextView
 
-    private EditText zipcodeEditText;
-    private EditText snowdaysEditText;
-    private Spinner schoolTypeSpinner;
-    private Button calculateButton;
-    private TextView predictionToday;
-    private TextView predictionTomorrow;
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        val rootView = inflater.inflate(R.layout.fragment_snow_day, container, false)
 
-    @Nullable
-    @Override
-    public View onCreateView(@NonNull LayoutInflater inflater,
-                             @Nullable ViewGroup container,
-                             @Nullable Bundle savedInstanceState) {
-        // Inflate the layout
-        View rootView = inflater.inflate(R.layout.fragment_snow_day, container, false);
+        zipcodeEditText = rootView.findViewById(R.id.zipcode)
+        snowdaysEditText = rootView.findViewById(R.id.snowdays)
+        schoolTypeSpinner = rootView.findViewById(R.id.schooltype)
+        calculateButton = rootView.findViewById(R.id.calculateButton)
+        predictionToday = rootView.findViewById(R.id.predictionToday)
+        predictionTomorrow = rootView.findViewById(R.id.predictionTomorrow)
 
-        // Find the views by their IDs
-        zipcodeEditText = rootView.findViewById(R.id.zipcode);
-        snowdaysEditText = rootView.findViewById(R.id.snowdays);
-        schoolTypeSpinner = rootView.findViewById(R.id.schooltype);
-        calculateButton = rootView.findViewById(R.id.calculateButton); // Add a Button in XML
-        predictionToday = rootView.findViewById(R.id.predictionToday);
-        predictionTomorrow = rootView.findViewById(R.id.predictionTomorrow);
+        calculateButton.setOnClickListener {
+            val zipcode = zipcodeEditText.text.toString()
+            val snowdays = snowdaysEditText.text.toString().toIntOrNull() ?: 0
+            val schoolType = SnowDayCalculator.SchoolType.values()[schoolTypeSpinner.selectedItemPosition]
 
-        // Set up the calculate button's click listener
-        calculateButton.setOnClickListener(v -> {
-            String zipcode = zipcodeEditText.getText().toString();
-            int snowdays = Integer.parseInt(snowdaysEditText.getText().toString());
-            SnowDayCalculator.SchoolType schoolType = SnowDayCalculator.SchoolType.values()[schoolTypeSpinner.getSelectedItemPosition()];
+            SnowDayTask(zipcode, snowdays, schoolType, 1, object : SnowDayTask.OnPredictionReceivedListener {
+                override fun onPredictionReceived(prediction: Long) {
+                    Toast.makeText(activity, "Prediction: $prediction%", Toast.LENGTH_LONG).show()
+                    Log.d("prediction i guess", "Prediction: $prediction%")
+                    Log.d("prediction i guess", schoolType.toString())
+                    Log.d("prediction i guess", zipcode)
+                    Log.d("prediction i guess", snowdays.toString())
 
-            // Start the AsyncTask
-            new SnowDayTask(zipcode, snowdays, schoolType, 1, new SnowDayTask.OnPredictionReceivedListener() {
-                @Override
-                public void onPredictionReceived(long prediction) {
-                    // Update the UI with the result
-                    // You could update the TextView, GraphView, or show a Toast
-                    // Example: show a Toast with the prediction
-                    Toast.makeText(getActivity(), "Prediction: " + prediction + "%", Toast.LENGTH_LONG).show();
-                    Log.d("prediction i guess","Prediction: " + prediction + "%");
-                    Log.d("prediction i guess", schoolType.toString());
-                    Log.d("prediction i guess", zipcode);
-                    Log.d("prediction i guess", String.valueOf(snowdays));
-                    if (prediction < 0) {
-                        predictionToday.setText("Limited");
-                    }
-                    else {
-                        predictionToday.setText(prediction + "%");
-                    }
+                    predictionToday.text = if (prediction < 0) "Limited" else "$prediction%"
                 }
-            }).execute();
-            new SnowDayTask(zipcode, snowdays, schoolType, 2, new SnowDayTask.OnPredictionReceivedListener() {
-                @Override
-                public void onPredictionReceived(long prediction) {
-                    // Update the UI with the result
-                    // You could update the TextView, GraphView, or show a Toast
-                    // Example: show a Toast with the prediction
-                    Toast.makeText(getActivity(), "Prediction: " + prediction + "%", Toast.LENGTH_LONG).show();
-                    Log.d("prediction i guess","Prediction: " + prediction + "%");
-                    Log.d("prediction i guess", schoolType.toString());
-                    Log.d("prediction i guess", zipcode);
-                    Log.d("prediction i guess", String.valueOf(snowdays));
-                    if (prediction == -154) {
-                        predictionTomorrow.setText("Limited");
-                    }
-                    else {
-                        predictionTomorrow.setText(prediction + "%");
-                    }
+            }).execute()
+
+            SnowDayTask(zipcode, snowdays, schoolType, 2, object : SnowDayTask.OnPredictionReceivedListener {
+                override fun onPredictionReceived(prediction: Long) {
+                    Toast.makeText(activity, "Prediction: $prediction%", Toast.LENGTH_LONG).show()
+                    Log.d("prediction i guess", "Prediction: $prediction%")
+                    Log.d("prediction i guess", schoolType.toString())
+                    Log.d("prediction i guess", zipcode)
+                    Log.d("prediction i guess", snowdays.toString())
+
+                    predictionTomorrow.text = if (prediction == -154L) "Limited" else "$prediction%"
                 }
-            }).execute();
-        });
-        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(
-                getContext(),
-                R.array.school_types, // Define an array in strings.xml
-                android.R.layout.simple_spinner_item);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        schoolTypeSpinner.setAdapter(adapter);
+            }).execute()
+        }
 
+        val adapter = ArrayAdapter.createFromResource(
+            requireContext(),
+            R.array.school_types,
+            android.R.layout.simple_spinner_item
+        )
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        schoolTypeSpinner.adapter = adapter
 
-        return rootView;
+        return rootView
     }
 }

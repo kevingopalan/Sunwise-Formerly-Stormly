@@ -1,237 +1,76 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".HomeFragment"
-    android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|uiMode">
-    <androidx.constraintlayout.widget.ConstraintLayout
+    android:fillViewport="true">
+
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
-        <EditText
-            android:id="@+id/text_search"
-            android:layout_width="0dp"
-            android:layout_height="56dp"
-            android:layout_marginEnd="56dp"
-            android:padding="16dp"
-            android:autofillHints="postalAddress"
-            android:background="@drawable/bottomnav"
-            android:hint="Your address here"
-            android:textColor="#ffffff"
-            android:inputType="textPostalAddress"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            android:fontFamily="@font/montsemibold"/>
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <EditText
+                android:id="@+id/text_search"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="Enter Location"
+                android:inputType="textPostalAddress" />
+
+            <Button
+                android:id="@+id/search"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Search" />
+
+        </LinearLayout>
 
         <Button
-            android:id="@+id/search"
-            android:layout_width="56dp"
-            android:layout_height="56dp"
-            android:layout_marginTop="0dp"
-            android:background="@drawable/bottomnav"
-            android:backgroundTint="#FFFFFF"
-            android:drawableLeft="@drawable/go"
-            android:paddingStart="18dp"
-            android:textColor="#222"
-            app:backgroundTint="#222"
-            app:layout_constraintStart_toEndOf="@id/text_search"
-            app:layout_constraintTop_toTopOf="@id/text_search"/>
+            android:id="@+id/locationButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Detect Location" />
 
+        <TextView
+            android:id="@+id/locationTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textSize="18sp"
+            tools:text="Location will appear here" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Saved Locations"
+            android:textStyle="bold"
+            android:textSize="18sp" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/savedLocationsRecyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp" />
 
         <com.airbnb.lottie.LottieAnimationView
             android:id="@+id/animation_view"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="120dp"
-            app:layout_constraintHeight="80dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintWidth="80dp"
+            android:layout_width="150dp"
+            android:layout_height="150dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="16dp"
             app:lottie_autoPlay="true"
             app:lottie_loop="true"
             app:lottie_rawRes="@raw/clear_day" />
 
-        <TextView
-            android:id="@+id/text_home"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:fontFamily="@font/montbold"
-            android:text="--º"
-            android:textColor="#fff"
-            android:textSize="72sp"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/animation_view" />
-
-        <TextView
-            android:id="@+id/text_desc"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="---"
-            android:textColor="#ffffff"
-            android:textSize="15sp"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/text_home"
-            android:fontFamily="@font/montsemibold"/>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:weightSum="1"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/text_desc"
-            android:layout_marginLeft="20dp"
-            android:layout_marginRight="20dp"
-            android:layout_marginTop="60dp"
-            android:id="@+id/basicinfo"
-            android:background="@drawable/main_background">
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_weight=".3333333333333333333333333333333333333"
-                android:layout_height="wrap_content">
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:layout_marginEnd="5dp"
-                    android:layout_marginTop="5dp"
-                    android:padding="10dp"
-                    android:orientation="vertical">
-                    <ImageView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:src="@drawable/humidityicon"
-                        android:layout_gravity="top"/>
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:textAlignment="center"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="10dp"
-                        android:text="Humidity"
-                        android:fontFamily = "@font/montsemibold"
-                        android:textColor="#fff"/>
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:id="@+id/humidity"
-                        android:text="--%"
-                        android:fontFamily = "@font/montbold"
-                        android:textColor="#fff"
-                        android:textAlignment="center"
-                        android:textSize="24sp"/>
-                </LinearLayout>
-            </LinearLayout>
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_weight=".3333333333333333333333333333333333333"
-                android:layout_height="wrap_content">
-                <LinearLayout
-                    android:orientation="vertical"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:layout_marginEnd="5dp"
-                    android:layout_marginTop="5dp"
-                    android:layout_marginStart="5dp"
-                    android:padding="10dp">
-                    <ImageView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:src="@drawable/rainy_24px"
-                        android:layout_gravity="top"/>
-                    <TextView
-                        android:layout_marginTop="10dp"
-                        android:layout_width="match_parent"
-                        android:textAlignment="center"
-                        android:layout_height="wrap_content"
-                        android:text="Rain"
-                        android:fontFamily = "@font/montsemibold"
-                        android:textColor="#fff"/>
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:id="@+id/precipitation"
-                        android:text="--%"
-                        android:fontFamily = "@font/montbold"
-                        android:textColor="#fff"
-                        android:textAlignment="center"
-                        android:textSize="24sp"/>
-                </LinearLayout>
-            </LinearLayout>
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_weight=".3333333333333333333333333333333333333"
-                android:layout_height="wrap_content">
-                <LinearLayout
-                    android:orientation="vertical"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:layout_marginTop="5dp"
-                    android:layout_marginStart="5dp"
-                    android:padding="10dp">
-                    <ImageView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:src="@drawable/baseline_wind_24"
-                        android:layout_gravity="top"/>
-                    <TextView
-                        android:layout_marginTop="10dp"
-                        android:layout_width="match_parent"
-                        android:textAlignment="center"
-                        android:layout_height="wrap_content"
-                        android:text="Wind"
-                        android:fontFamily = "@font/montsemibold"
-                        android:textColor="#fff"/>
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="--mph"
-                        android:id="@+id/wind"
-                        android:layout_marginTop="2dp"
-                        android:fontFamily = "@font/montbold"
-                        android:textColor="#fff"
-                        android:textAlignment="center"
-                        android:textSize="20sp"/>
-                </LinearLayout>
-            </LinearLayout>
-        </LinearLayout>
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="200dp"
-            android:id="@+id/hourlygraph"
-            android:orientation="horizontal"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/basicinfo"
-            android:layout_margin="20dp"
-            android:padding="20dp"
-            android:background="@drawable/main_background">
-            <com.jjoe64.graphview.GraphView
-                android:id="@+id/hrGraphContent"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_alignParentTop="true"
-                android:fontFamily = "@font/montsemibold"/>
-        </LinearLayout>
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="200dp"
-            android:padding="20dp"
-            android:id="@+id/dailygraph"
-            android:orientation="horizontal"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/hourlygraph"
-            android:layout_margin="20dp"
-            android:background="@drawable/main_background"
-            android:fontFamily = "@font/montsemibold">
-            <com.jjoe64.graphview.GraphView
-                android:id="@+id/dayGraphContent"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_alignParentTop="true"
-                android:fontFamily = "@font/montsemibold"/>
-        </LinearLayout>
-    </androidx.constraintlayout.widget.ConstraintLayout>
-</androidx.core.widget.NestedScrollView>
+    </LinearLayout>
+</ScrollView>
