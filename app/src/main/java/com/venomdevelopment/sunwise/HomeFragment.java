@@ -22,15 +22,14 @@ import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
-import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.appcompat.app.AlertDialog;
 
 import com.airbnb.lottie.LottieAnimationView;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonArrayRequest;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
 
@@ -45,12 +44,15 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLocationClickListener {
 
     private static final String TAG = "HomeFragment";
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 100;
     private static final String NOMINATIM_REVERSE_URL = "https://nominatim.openstreetmap.org/reverse?format=jsonv2";
+    private static final String NOMINATIM_URL = "https://nominatim.openstreetmap.org/search?q=";
+    private static final String BASE_URL_POINTS = "https://api.weather.gov/points/";
     private static final String USER_AGENT = "SunwiseApp";
     private static final String PREF_SAVED_LOCATIONS = "saved_locations";
 
@@ -61,6 +63,8 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
     private RecyclerView savedLocationsRecyclerView;
     private SavedLocationAdapter savedLocationAdapter;
     private List<String> savedLocationsList = new ArrayList<>();
+    private Map<String, String> currentTemperatures = new ConcurrentHashMap<>();
+    private Map<String, String> currentWeatherIcons = new ConcurrentHashMap<>();
     private LottieAnimationView animationViewHome;
     public static final String myPref = "addressPref";
     private LocationManager locationManager;
@@ -105,9 +109,10 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
         requestQueue = Volley.newRequestQueue(requireContext());
 
         savedLocationsRecyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
-        savedLocationAdapter = new SavedLocationAdapter(savedLocationsList, this);
+        savedLocationAdapter = new SavedLocationAdapter(savedLocationsList, this, currentTemperatures, currentWeatherIcons);
         savedLocationsRecyclerView.setAdapter(savedLocationAdapter);
         loadSavedLocations();
+        fetchCurrentWeatherForSavedLocations(); // Fetch data for saved locations
 
         searchButton.setOnClickListener(v1 -> {
             String address = search.getText().toString().trim();
@@ -135,7 +140,7 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
         Set<String> savedSet = getSavedLocations();
         savedLocationsList.clear();
         savedLocationsList.addAll(savedSet);
-        savedLocationAdapter.notifyDataSetChanged();
+        // Do not notify adapter here, data will be updated after fetching weather
     }
 
     private void updateSavedLocations(String location) {
@@ -215,10 +220,12 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
                     } catch (JSONException e) {
                         Log.e(TAG, "Error parsing reverse geocoding response: " + e.getMessage());
                         locationTextView.setText("Error getting location name.");
+                        showNominatimErrorDialog("Error parsing location data.");
                     }
                 }, error -> {
             Log.e(TAG, "Reverse geocoding error: " + error.toString());
             locationTextView.setText("Error getting location name.");
+            showNominatimErrorDialog("Could not connect to location service.");
         }) {
             @Override
             public Map<String, String> getHeaders() {
@@ -228,6 +235,124 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
             }
         };
         requestQueue.add(jsonObjectRequest);
+    }
+
+    private void fetchGeocodingDataForTemperature(String address) {
+        String encodedAddress = address.replaceAll(" ", "+");
+        String geocodeUrl = NOMINATIM_URL + encodedAddress + "&format=json&addressdetails=1";
+
+        JsonArrayRequest jsonArrayRequest = new JsonArrayRequest(Request.Method.GET, geocodeUrl, null,
+                response -> {
+                    try {
+                        JSONObject firstResult = response.getJSONObject(0);
+                        String lat = firstResult.getString("lat");
+                        String lon = firstResult.getString("lon");
+                        fetchCurrentTemperature(lat, lon, address);
+                    } catch (JSONException e) {
+                        Log.e(TAG, "Error parsing geocoding for temp: " + e.getMessage());
+                        showNominatimErrorDialog("Error parsing location data for temperature.");
+                    }
+                }, error -> {
+            Log.e(TAG, "Geocoding error for temp: " + error.getMessage());
+            showNominatimErrorDialog("Looks like you might have to wait... Unfortunately this is not within our control. What you can do is to go check your internet and see if you are the problem. Please try again later.");
+        }) {
+            @Override
+            public Map<String, String> getHeaders() {
+                Map<String, String> headers = new HashMap<>();
+                headers.put("User-Agent", USER_AGENT);
+                return headers;
+            }
+        };
+        requestQueue.add(jsonArrayRequest);
+    }
+
+    private void showNominatimErrorDialog(String message) {
+        if (isAdded()) { // Check if the fragment is still attached
+            new AlertDialog.Builder(requireContext())
+                    .setTitle("Oh No! Looks like Nominatim is down.")
+                    .setMessage(message)
+                    .setPositiveButton(android.R.string.ok, (dialog, which) -> dialog.dismiss())
+                    .setIcon(android.R.drawable.ic_dialog_alert)
+                    .show();
+        } else {
+            Log.w(TAG, "Error dialog not shown: Fragment is not attached.");
+        }
+    }
+
+    private void fetchCurrentWeatherForSavedLocations() {
+        for (String location : savedLocationsList) {
+            fetchGeocodingDataForTemperature(location); // Helper method to get coordinates and then weather
+        }
+    }
+
+    private void fetchCurrentTemperature(String lat, String lon, String locationName) {
+        String pointsUrl = BASE_URL_POINTS + lat + "," + lon;
+        JsonObjectRequest pointsRequest = new JsonObjectRequest(Request.Method.GET, pointsUrl, null,
+                response -> {
+                    try {
+                        JSONObject properties = response.getJSONObject("properties");
+                        String forecastHourlyUrl = properties.getString("forecastHourly");
+                        JsonObjectRequest forecastHourlyRequest = new JsonObjectRequest(Request.Method.GET, forecastHourlyUrl, null,
+                                hourlyResponse -> {
+                                    try {
+                                        JSONObject currentPeriod = hourlyResponse.getJSONObject("properties").getJSONArray("periods").getJSONObject(0);
+                                        String temperature = currentPeriod.getString("temperature") + "°" + currentPeriod.getString("temperatureUnit");
+                                        String shortForecast = currentPeriod.getString("shortForecast").toLowerCase();
+                                        String icon = getWeatherAnimationName(shortForecast);
+
+                                        currentTemperatures.put(locationName, temperature);
+                                        currentWeatherIcons.put(locationName, icon);
+                                        savedLocationAdapter.notifyDataSetChanged(); // Update the list
+                                    } catch (JSONException e) {
+                                        Log.e(TAG, "Error parsing hourly forecast for temp: " + e.getMessage());
+                                    }
+                                }, error -> Log.e(TAG, "Error fetching hourly forecast for temp: " + error.getMessage())) {
+                            @Override
+                            public Map<String, String> getHeaders() {
+                                Map<String, String> headers = new HashMap<>();
+                                headers.put("User-Agent", USER_AGENT);
+                                return headers;
+                            }
+                        };
+                        requestQueue.add(forecastHourlyRequest);
+                    } catch (JSONException e) {
+                        Log.e(TAG, "Error parsing points data for temp: " + e.getMessage());
+                    }
+                }, error -> Log.e(TAG, "Error fetching points data for temp: " + error.getMessage())) {
+            @Override
+            public Map<String, String> getHeaders() {
+                Map<String, String> headers = new HashMap<>();
+                headers.put("User-Agent", USER_AGENT);
+                return headers;
+            }
+        };
+        requestQueue.add(pointsRequest);
+    }
+
+    private String getWeatherAnimationName(String shortForecast) {
+        String lottieAnim = "clear_day"; // Default
+        String prefix = "_day"; // Assuming day by default, adjust if needed
+
+        if (shortForecast.contains("snow")) {
+            lottieAnim = "snow";
+        } else if (shortForecast.contains("rain") || shortForecast.contains("showers")) {
+            lottieAnim = "rain";
+        } else if (shortForecast.contains("partly")) {
+            lottieAnim = "partly_cloudy" + prefix;
+        } else if (shortForecast.contains("sun") || shortForecast.contains("clear")) {
+            lottieAnim = "clear" + prefix;
+        } else if (shortForecast.contains("storm")) {
+            lottieAnim = "thunderstorms" + prefix;
+        } else if (shortForecast.contains("wind") || shortForecast.contains("gale") || shortForecast.contains("dust") || shortForecast.contains("blow")) {
+            lottieAnim = "wind";
+        } else if (shortForecast.contains("fog") || shortForecast.contains("haze")) {
+            lottieAnim = "fog";
+        } else if (shortForecast.contains("cloudy")) {
+            lottieAnim = "cloudy";
+        } else {
+            lottieAnim = "cloudy";
+        }
+        return lottieAnim;
     }
 
     public interface OnNavigateToForecastListener {
@@ -264,7 +389,7 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
 
         // Using FragmentTransaction for navigation
         getParentFragmentManager().beginTransaction()
-        .setCustomAnimations(
+                .setCustomAnimations(
                         R.anim.slide_in,  // enter
                         R.anim.fade_out,  // exit
                         R.anim.fade_in,   // popEnter
