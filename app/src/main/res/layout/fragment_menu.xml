@@ -5,7 +5,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|uiMode"
-    tools:context=".MenuFragment">
+    tools:context=".MenuFragment"
+    android:background="@drawable/background_homepage">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
@@ -23,33 +24,18 @@
             android:textColor="@color/white"
             android:textSize="36dp"
             android:id="@+id/moreTools"/>
-        <androidx.appcompat.widget.AppCompatButton
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/moreTools"
-            android:layout_marginLeft="20dp"
-            android:layout_marginRight="20dp"
-            android:padding="20dp"
-            android:layout_marginTop="50dp"
-            android:background="@drawable/main_background"
-            android:text = "Radar"
-            android:fontFamily="@font/montsemibold"
-            android:textColor="@color/white"
-            android:drawablePadding="5dp"
-            android:textAllCaps="false"
-            android:textAlignment="textStart"
-            android:drawableLeft="@drawable/baseline_radar_24"
-            android:id="@+id/btnRadar"/>
 
         <androidx.appcompat.widget.AppCompatButton
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/btnRadar"
+            app:layout_constraintTop_toBottomOf="@id/moreTools"
             android:drawablePadding="5dp"
+            android:layout_marginStart="20dp"
+            android:layout_marginEnd="20dp"
+            android:layout_marginBottom="20dp"
+            android:layout_marginTop="50dp"
             android:padding="20dp"
-            android:layout_margin="20dp"
             android:background="@drawable/main_background"
             android:drawableLeft="@drawable/baseline_settings_24"
             android:text = "Settings"

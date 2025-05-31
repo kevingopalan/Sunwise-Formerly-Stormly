@@ -1,32 +1,30 @@
-package com.venomdevelopment.sunwise;
+package com.venomdevelopment.sunwise
 
-import static com.venomdevelopment.sunwise.HomeFragment.myPref;
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.ArrayAdapter
+import android.widget.Spinner
+import androidx.fragment.app.Fragment
 
-import android.content.SharedPreferences;
-import android.os.Bundle;
+class SettingsFragment : Fragment() {
+    private lateinit var unitSpinner: Spinner
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        val rootView = inflater.inflate(R.layout.fragment_settings, container, false)
+        unitSpinner = rootView.findViewById(R.id.unit)
+        val adapter = ArrayAdapter.createFromResource(
+            requireContext(),
+            R.array.unit_entries,
+            android.R.layout.simple_spinner_item
+        )
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        unitSpinner.adapter = adapter
 
-import androidx.preference.EditTextPreference;
-import androidx.preference.PreferenceFragmentCompat;
-import androidx.preference.PreferenceManager;
-
-public class SettingsFragment extends PreferenceFragmentCompat {
-    EditTextPreference addressPreference;
-    @Override
-    public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
-        setPreferencesFromResource(R.xml.root_preferences, rootKey);
-        EditTextPreference addressPreference = findPreference("address");
+        return super.onCreateView(inflater, container, savedInstanceState)
     }
-    public String getPreferenceValue(String key)
-    {
-        SharedPreferences sp = getActivity().getSharedPreferences(myPref,0);
-        String str = sp.getString(key,"");
-        return str;
-    }
-    public void writeToPreference(String thePreference, String key)
-    {
-        SharedPreferences.Editor editor = getActivity().getSharedPreferences(myPref,0).edit();
-        editor.putString(key, thePreference);
-        editor.commit();
-    }
-
 }

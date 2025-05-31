@@ -35,7 +35,7 @@ public class FragmentAlerts extends Fragment {
     private RecyclerView recyclerView;
     private AlertsRecyclerViewAdapter adapter;
 
-    private static final String NOMINATIM_URL = "https://nominatim.openstreetmap.org/search?q=";
+    private static final String NOMINATIM_URL = "https://osm-nominatim.gs.mil/search?q=";
     private static final String BASE_URL_POINTS = "https://api.weather.gov/alerts/active?point=";
     private static final String USER_AGENT = "Mozilla/5.0";  // Make sure to set a User-Agent
     private static final String myPref = "addressPref";  // Your SharedPreferences name

@@ -44,6 +44,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.Date;
 
 import com.jjoe64.graphview.GraphView;
 import com.jjoe64.graphview.GridLabelRenderer;
@@ -55,11 +56,14 @@ public class ForecastFragment extends Fragment {
 
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final String BASE_URL_POINTS = "https://api.weather.gov/points/";
-    private static final String NOMINATIM_URL = "https://nominatim.openstreetmap.org/search?q=";
+    private static final String NOMINATIM_URL = "https://osm-nominatim.gs.mil/search?q=";
     private static final String USER_AGENT = "Mozilla/5.0";
     private LottieAnimationView animationViewForecast;
     private RequestQueue requestQueue;
-    private TextView tempTextForecast, descTextForecast, humidityTextViewForecast, windTextViewForecast, precipitationTextViewForecast;
+    private TextView currentTempTextForecast; // Changed name for clarity
+    private TextView highTempTextForecast;
+    private TextView lowTempTextForecast;
+    private TextView descTextForecast, humidityTextViewForecast, windTextViewForecast, precipitationTextViewForecast;
     private EditText search;
     private Button searchButton;
     private RecyclerView dailyRecyclerView;
@@ -67,6 +71,8 @@ public class ForecastFragment extends Fragment {
     private HorizontalHourlyForecastAdapter horizontalHourlyAdapter;
     private WeatherViewModel weatherViewModel;
     GraphView hourlyGraphViewForecast, dailyGraphViewForecast;
+    private String currentTemperature = "";
+    private String dailyHighTemperature = "";
 
     public static final String myPref = "addressPref";
 
@@ -88,7 +94,9 @@ public class ForecastFragment extends Fragment {
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_forecast, container, false);
-        tempTextForecast = v.findViewById(R.id.text_home);
+        currentTempTextForecast = v.findViewById(R.id.currentTempText); // Changed ID in layout
+        highTempTextForecast = v.findViewById(R.id.highTempText);
+        lowTempTextForecast = v.findViewById(R.id.lowTempText);
         descTextForecast = v.findViewById(R.id.text_desc);
         search = v.findViewById(R.id.text_search);
         animationViewForecast = v.findViewById(R.id.animation_view);
@@ -112,7 +120,10 @@ public class ForecastFragment extends Fragment {
         weatherViewModel = new ViewModelProvider(requireActivity()).get(WeatherViewModel.class);
 
         // Observe LiveData for basic info
-        weatherViewModel.getTemperature().observe(getViewLifecycleOwner(), tempTextForecast::setText);
+        weatherViewModel.getCurrentTemperature().observe(getViewLifecycleOwner(), currentTempTextForecast::setText);
+        weatherViewModel.getHighTemperature().observe(getViewLifecycleOwner(), highTempTextForecast::setText);
+        weatherViewModel.getLowTemperature().observe(getViewLifecycleOwner(), lowTempTextForecast::setText);
+        weatherViewModel.getDescription().observe(getViewLifecycleOwner(), descTextForecast::setText);
         weatherViewModel.getDescription().observe(getViewLifecycleOwner(), descTextForecast::setText);
         weatherViewModel.getHumidity().observe(getViewLifecycleOwner(), humidityTextViewForecast::setText);
         weatherViewModel.getPrecipitation().observe(getViewLifecycleOwner(), precipitationTextViewForecast::setText);
@@ -123,6 +134,7 @@ public class ForecastFragment extends Fragment {
             hourlyGraphViewForecast.removeAllSeries();
             series.setColor(Color.WHITE); // Set hourly line color to white
             hourlyGraphViewForecast.addSeries(series);
+            Log.d("ForecastFragment", "Hourly graph data updated");
         });
         weatherViewModel.getDailyGraphDataDay().observe(getViewLifecycleOwner(), series -> {
             dailyGraphViewForecast.removeAllSeries();
@@ -154,6 +166,7 @@ public class ForecastFragment extends Fragment {
         dailyGraphViewForecast.getGridLabelRenderer().setGridStyle(GridLabelRenderer.GridStyle.NONE);
         hourlyGraphViewForecast.getViewport().setXAxisBoundsManual(true);
         dailyGraphViewForecast.getViewport().setXAxisBoundsManual(true);
+        hourlyGraphViewForecast.getViewport().setYAxisBoundsManual(false);
         hourlyGraphViewForecast.getViewport().setMinX(0);
         hourlyGraphViewForecast.getViewport().setMaxX(23);
         dailyGraphViewForecast.getViewport().setMinX(0);
@@ -477,7 +490,26 @@ public class ForecastFragment extends Fragment {
                     if (!dailyItems.isEmpty()) {
                         String temp = dailyItems.get(0).toString().split(" / ")[0];
                         String desc = dailyDescList.get(0).split(" / ")[0];
-                        weatherViewModel.setTemperature(temp);
+                        String highTemp = "";
+                        String lowTemp = "";
+                        for (DailyForecastPair pair : forecastMap.values()) {
+                            if (pair.dayTemperature != null) {
+                                // Extract the numeric part and compare (e.g., "78°" -> 78)
+                                int dayTemp = Integer.parseInt(pair.dayTemperature.replaceAll("[^\\d.]", ""));
+                                if (highTemp.isEmpty() || dayTemp > Integer.parseInt(highTemp.replaceAll("[^\\d.]", ""))) {
+                                    highTemp = pair.dayTemperature;
+                                }
+                            }
+                            if (pair.nightTemperature != null) {
+                                // Extract the numeric part and compare (e.g., "78°" -> 78)
+                                int nightTemp = Integer.parseInt(pair.nightTemperature.replaceAll("[^\\d.]", ""));
+                                if (lowTemp.isEmpty() || nightTemp < Integer.parseInt(lowTemp.replaceAll("[^\\d.]", ""))) {
+                                    lowTemp = pair.nightTemperature;
+                                }
+                            }
+                        }
+                        weatherViewModel.setHighTemperature(highTemp);
+                        weatherViewModel.setLowTemperature(lowTemp);
                         weatherViewModel.setDescription(desc);
                         animationViewForecast.setAnimation(getResources().getIdentifier(dailyLottieAnimList.get(0), "raw", getContext().getPackageName()));
                         animationViewForecast.loop(true);
@@ -569,7 +601,7 @@ public class ForecastFragment extends Fragment {
                             JSONObject currentHour = periods.getJSONObject(0);
                             String temperature = currentHour.optString("temperature") + "°";
                             String shortForecast = currentHour.optString("shortForecast");
-                            weatherViewModel.setTemperature(temperature);
+                            weatherViewModel.setCurrentTemperature(temperature); // Set CURRENT temp
                             weatherViewModel.setDescription(shortForecast);
                             String windspeed = currentHour.optString("windSpeed");
                             int humidity = currentHour.getJSONObject("relativeHumidity").getInt("value");
@@ -590,9 +622,9 @@ public class ForecastFragment extends Fragment {
                         DateTimeFormatter dayOutputFormatter = DateTimeFormatter.ofPattern("EEE");
                         LocalDateTime now = LocalDateTime.now();
                         LineGraphSeries<DataPoint> series = new LineGraphSeries<>();
-                        for (int i = 0; i < periods.length() && i < 24; i++) {
+                        for (int i = 0; i < periods.length() && i < 48; i++) {
                             JSONObject current = periods.getJSONObject(i);
-                            String temperature = current.optString("temperature") + "°";
+                            String temperature = current.optString("temperature"); // Get temp as String
                             String description = current.optString("shortForecast");
                             String precipitationProbability = String.valueOf(current.getJSONObject("probabilityOfPrecipitation").optInt("value", 1013));
                             String humidityValue = current.has("relativeHumidity") ? current.getJSONObject("relativeHumidity").optInt("value") + "%" : "N/A";
@@ -645,14 +677,22 @@ public class ForecastFragment extends Fragment {
                             } else if (now.getDayOfMonth() != startTime.getDayOfMonth()) {
                                 displayTime = formattedDay + " " + formattedTime;
                             }
-                            hourlyItems.add(temperature);
+                            hourlyItems.add(temperature + "°");
                             hourlyTime.add(displayTime);
                             hourlyIcon.add(icon);
                             hourlyPrecipitation.add(precipitationProbability + "%");
                             hourlyHumidity.add(humidityValue);
                             hourlyLottieAnimList.add(lottieAnim);
                             hourlyDescList.add(description);
-                            series.appendData(new DataPoint(i, Double.parseDouble(current.getString("temperature"))), false, 24);
+
+                            //  Convert LocalDateTime to Date for GraphView
+                            DateTimeFormatter timestampFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"); // Format for Timestamp
+                            Date date = java.sql.Timestamp.valueOf(startTime.format(timestampFormatter));
+                            double temp = Double.parseDouble(temperature);
+
+                            Log.d(TAG, "Graph Point - Time: " + date + ", Temp: " + temp);  // Log data point
+
+                            series.appendData(new DataPoint(i, temp), false, 24);
                         }
                         weatherViewModel.setHourlyGraphData(series);
                         horizontalHourlyAdapter = new HorizontalHourlyForecastAdapter(getContext(), hourlyItems, hourlyTime, hourlyIcon, hourlyPrecipitation, hourlyHumidity, hourlyLottieAnimList, hourlyDescList);
@@ -665,6 +705,7 @@ public class ForecastFragment extends Fragment {
                                 firstVisibleItemPosition[0] = layoutManager.findFirstVisibleItemPosition();
                                 layoutManager.scrollToPositionWithOffset(position, 0); // Align start of item with start of RecyclerView
                             }
+
                             @Override
                             public void onItemContracted(int position) {
                                 horizontalHourlyRecyclerView.smoothScrollToPosition(firstVisibleItemPosition[0]); // Keep smooth scrolling on contract

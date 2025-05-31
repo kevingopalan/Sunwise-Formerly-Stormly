@@ -8,6 +8,8 @@ import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -50,8 +52,8 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
 
     private static final String TAG = "HomeFragment";
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 100;
-    private static final String NOMINATIM_REVERSE_URL = "https://nominatim.openstreetmap.org/reverse?format=jsonv2";
-    private static final String NOMINATIM_URL = "https://nominatim.openstreetmap.org/search?q=";
+    private static final String NOMINATIM_REVERSE_URL = "https://osm-nominatim.gs.mil/reverse?format=jsonv2";
+    private static final String NOMINATIM_URL = "https://osm-nominatim.gs.mil/search?q=";
     private static final String BASE_URL_POINTS = "https://api.weather.gov/points/";
     private static final String USER_AGENT = "SunwiseApp";
     private static final String PREF_SAVED_LOCATIONS = "saved_locations";
@@ -63,6 +65,8 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
     private RecyclerView savedLocationsRecyclerView;
     private SavedLocationAdapter savedLocationAdapter;
     private List<String> savedLocationsList = new ArrayList<>();
+    private List<String> originalSavedLocationsList = new ArrayList<>(); // Keep a copy of the original list
+    private EditText savedLocationsSearch;
     private Map<String, String> currentTemperatures = new ConcurrentHashMap<>();
     private Map<String, String> currentWeatherIcons = new ConcurrentHashMap<>();
     private LottieAnimationView animationViewHome;
@@ -105,14 +109,34 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
         locationButton = v.findViewById(R.id.locationButton);
         locationTextView = v.findViewById(R.id.locationTextView);
         savedLocationsRecyclerView = v.findViewById(R.id.savedLocationsRecyclerView);
+        savedLocationsSearch = v.findViewById(R.id.savedLocationsSearch);
         animationViewHome = v.findViewById(R.id.animation_view);
         requestQueue = Volley.newRequestQueue(requireContext());
 
+        savedLocationsRecyclerView.setNestedScrollingEnabled(false);
         savedLocationsRecyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
         savedLocationAdapter = new SavedLocationAdapter(savedLocationsList, this, currentTemperatures, currentWeatherIcons);
         savedLocationsRecyclerView.setAdapter(savedLocationAdapter);
         loadSavedLocations();
-        fetchCurrentWeatherForSavedLocations(); // Fetch data for saved locations
+        fetchCurrentWeatherForSavedLocations();
+
+        // Set up the text watcher for the search input
+        savedLocationsSearch.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                // Not needed
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                filterSavedLocations(s.toString());
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                // Not needed
+            }
+        });
 
         searchButton.setOnClickListener(v1 -> {
             String address = search.getText().toString().trim();
@@ -138,9 +162,30 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
 
     private void loadSavedLocations() {
         Set<String> savedSet = getSavedLocations();
+        originalSavedLocationsList.clear();
+        originalSavedLocationsList.addAll(savedSet);
         savedLocationsList.clear();
-        savedLocationsList.addAll(savedSet);
-        // Do not notify adapter here, data will be updated after fetching weather
+        savedLocationsList.addAll(originalSavedLocationsList); // Initialize displayed list
+        if (savedLocationAdapter != null) {
+            savedLocationAdapter.notifyDataSetChanged();
+        }
+    }
+
+    private void filterSavedLocations(String query) {
+        savedLocationsList.clear();
+        if (query.isEmpty()) {
+            savedLocationsList.addAll(originalSavedLocationsList);
+        } else {
+            String lowerCaseQuery = query.toLowerCase();
+            for (String location : originalSavedLocationsList) {
+                if (location.toLowerCase().contains(lowerCaseQuery)) {
+                    savedLocationsList.add(location);
+                }
+            }
+        }
+        if (savedLocationAdapter != null) {
+            savedLocationAdapter.notifyDataSetChanged();
+        }
     }
 
     private void updateSavedLocations(String location) {
@@ -150,7 +195,7 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
         }
         savedSet.add(location);
         saveSavedLocations(savedSet);
-        loadSavedLocations(); // Reload to update the order
+        loadSavedLocations(); // Reload to update the order and reset search
     }
 
     private boolean checkLocationPermission() {

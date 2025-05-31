@@ -1,14 +1,17 @@
 package com.venomdevelopment.sunwise;
 
-import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModel;
 
 import com.jjoe64.graphview.series.DataPoint;
 import com.jjoe64.graphview.series.LineGraphSeries;
 
 public class WeatherViewModel extends ViewModel {
-    private MutableLiveData<String> temperature = new MutableLiveData<>();
+
+    private MutableLiveData<String> currentTemperature = new MutableLiveData<>();
+    private MutableLiveData<String> highTemperature = new MutableLiveData<>();
+    private MutableLiveData<String> lowTemperature = new MutableLiveData<>();
     private MutableLiveData<String> description = new MutableLiveData<>();
     private MutableLiveData<String> humidity = new MutableLiveData<>();
     private MutableLiveData<String> wind = new MutableLiveData<>();
@@ -17,12 +20,28 @@ public class WeatherViewModel extends ViewModel {
     private MutableLiveData<LineGraphSeries<DataPoint>> dailyGraphDataDay = new MutableLiveData<>();
     private MutableLiveData<LineGraphSeries<DataPoint>> dailyGraphDataNight = new MutableLiveData<>();
 
-    public LiveData<String> getTemperature() {
-        return temperature;
+    public LiveData<String> getCurrentTemperature() {
+        return currentTemperature;
     }
 
-    public void setTemperature(String temperature) {
-        this.temperature.setValue(temperature);
+    public void setCurrentTemperature(String temperature) {
+        this.currentTemperature.setValue(temperature);
+    }
+
+    public LiveData<String> getHighTemperature() {
+        return highTemperature;
+    }
+
+    public void setHighTemperature(String highTemperature) {
+        this.highTemperature.setValue(highTemperature);
+    }
+
+    public LiveData<String> getLowTemperature() {
+        return lowTemperature;
+    }
+
+    public void setLowTemperature(String lowTemperature) {
+        this.lowTemperature.setValue(lowTemperature);
     }
 
     public LiveData<String> getDescription() {
@@ -61,23 +80,23 @@ public class WeatherViewModel extends ViewModel {
         return hourlyGraphData;
     }
 
-    public void setHourlyGraphData(LineGraphSeries<DataPoint> data) {
-        this.hourlyGraphData.setValue(data);
+    public void setHourlyGraphData(LineGraphSeries<DataPoint> hourlyGraphData) {
+        this.hourlyGraphData.setValue(hourlyGraphData);
     }
 
     public LiveData<LineGraphSeries<DataPoint>> getDailyGraphDataDay() {
         return dailyGraphDataDay;
     }
 
-    public void setDailyGraphDataDay(LineGraphSeries<DataPoint> data) {
-        this.dailyGraphDataDay.setValue(data);
+    public void setDailyGraphDataDay(LineGraphSeries<DataPoint> dailyGraphDataDay) {
+        this.dailyGraphDataDay.setValue(dailyGraphDataDay);
     }
 
     public LiveData<LineGraphSeries<DataPoint>> getDailyGraphDataNight() {
         return dailyGraphDataNight;
     }
 
-    public void setDailyGraphDataNight(LineGraphSeries<DataPoint> data) {
-        this.dailyGraphDataNight.setValue(data);
+    public void setDailyGraphDataNight(LineGraphSeries<DataPoint> dailyGraphDataNight) {
+        this.dailyGraphDataNight.setValue(dailyGraphDataNight);
     }
 }

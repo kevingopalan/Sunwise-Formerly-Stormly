@@ -14,15 +14,9 @@ import androidx.fragment.app.FragmentTransaction;
 
 public class MenuFragment extends Fragment {
 
-    private Button btnAlerts;  // Declare the alerts button
+    private Button btnAlerts;
     private Button btnSettings;
     private Button btnSnow;
-    private FragmentAlerts fragmentAlerts;  // Reference to FragmentAlerts
-    private SettingsFragment fragmentSettings;
-    private SnowDayFragment fragmentSnow;
-    private boolean isFragmentAlertsAdded = false;  // Track if FragmentAlerts is added
-    private boolean isFragmentSettingsAdded = false;
-    private boolean isFragmentSnowAdded = false;
 
     @Nullable
     @Override
@@ -31,210 +25,172 @@ public class MenuFragment extends Fragment {
                              @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_menu, container, false);
 
-        // Initialize the button from the layout
         btnAlerts = view.findViewById(R.id.btnAlerts);
         btnSettings = view.findViewById(R.id.btnSettings);
         btnSnow = view.findViewById(R.id.btnSnow);
 
         // Set the click listener for the "Alerts" button
         btnAlerts.setOnClickListener(v -> {
-            // Hide the other fragments
-            hideOtherFragments();
+            // Replace MenuFragment with FragmentAlerts
+            getParentFragmentManager().beginTransaction()
+                    .setCustomAnimations(
+                            R.anim.slide_in_top,  // enter
+                            R.anim.fade_out,  // exit
+                            R.anim.fade_in,   // popEnter
+                            R.anim.slide_out_top  // popExit
+                    )
+                    .replace(R.id.flFragment, new FragmentAlerts(), "alertsFragment") // Replace current fragment in the container
+                    .addToBackStack(null) // Optional: Allows back button to return to the fragment that opened MenuFragment
+                    .commit();
+        });
 
-            // Show FragmentAlerts
-            showFragmentAlerts();
-        });
         btnSettings.setOnClickListener(v -> {
-            // Hide the other fragments
-            hideOtherFragments();
-            showFragmentSettings();
+            // Replace MenuFragment with SettingsFragment
+            getParentFragmentManager().beginTransaction()
+                    .setCustomAnimations(
+                            R.anim.slide_in_top,  // enter
+                            R.anim.fade_out,  // exit
+                            R.anim.fade_in,   // popEnter
+                            R.anim.slide_out_top  // popExit
+                    )
+                    .replace(R.id.flFragment, new SettingsFragment(), "settingsFragment")
+                    .addToBackStack(null)
+                    .commit();
         });
+
         btnSnow.setOnClickListener(v -> {
-            // Hide the other fragments
-            hideOtherFragments();
-            showFragmentSnow();
+            // Replace MenuFragment with SnowDayFragment
+            getParentFragmentManager().beginTransaction()
+                    .setCustomAnimations(
+                            R.anim.slide_in_top,  // enter
+                            R.anim.fade_out,  // exit
+                            R.anim.fade_in,   // popEnter
+                            R.anim.slide_out_top  // popExit
+                    )
+                    .replace(R.id.flFragment, new SnowDayFragment(), "snowFragment")
+                    .addToBackStack(null)
+                    .commit();
         });
 
         return view;
     }
 
-    // Hide the other fragments (home, forecast, and menu)
+    // Keep hideOtherFragments() if it's used elsewhere for other fragment management
+    // However, it will no longer be called directly by the buttons in this fragment
     private void hideOtherFragments() {
         FragmentTransaction transaction = getFragmentManager().beginTransaction();
 
-        // Get the fragments from the fragment manager
         Fragment homeFragment = getFragmentManager().findFragmentByTag("homeFragment");
         Fragment forecastFragment = getFragmentManager().findFragmentByTag("forecastFragment");
-        Fragment menuFragment = getFragmentManager().findFragmentByTag("menuFragment");
+        Fragment menuFragment = getFragmentManager().findFragmentByTag("menuFragment"); // This will now be removed by replace()
 
-        // Hide the fragments
         if (homeFragment != null) transaction.setCustomAnimations(
-                R.anim.slide_in_top,  // enter
-                R.anim.fade_out,  // exit
-                R.anim.fade_in,   // popEnter
-                R.anim.slide_out_top  // popExit
+                R.anim.slide_in_top,
+                R.anim.fade_out,
+                R.anim.fade_in,
+                R.anim.slide_out_top
         ).hide(homeFragment);
         if (forecastFragment != null) transaction.setCustomAnimations(
-                R.anim.slide_in_top,  // enter
-                R.anim.fade_out,  // exit
-                R.anim.fade_in,   // popEnter
-                R.anim.slide_out_top  // popExit
+                R.anim.slide_in_top,
+                R.anim.fade_out,
+                R.anim.fade_in,
+                R.anim.slide_out_top
         ).hide(forecastFragment);
+        // If MenuFragment is replacing itself, this hide call for menuFragment is now redundant
         if (menuFragment != null) transaction.setCustomAnimations(
-                R.anim.slide_in_top,  // enter
-                R.anim.fade_out,  // exit
-                R.anim.fade_in,   // popEnter
-                R.anim.slide_out_top  // popExit
+                R.anim.slide_in_top,
+                R.anim.fade_out,
+                R.anim.fade_in,
+                R.anim.slide_out_top
         ).hide(menuFragment);
 
-        // Commit the transaction
         transaction.commit();
     }
 
+    // This method seems to manage other fragments from a navigation item selection.
+    // It will still hide the fragments it finds if they are present.
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         FragmentTransaction transaction = getFragmentManager().beginTransaction();
 
-        // Get the fragments from the fragment manager
         Fragment alertsFragment = getFragmentManager().findFragmentByTag("alertsFragment");
         Fragment settingsFragment = getFragmentManager().findFragmentByTag("settingsFragment");
         Fragment newsFragment = getFragmentManager().findFragmentByTag("newsFragment");
         Fragment snowFragment = getFragmentManager().findFragmentByTag("snowFragment");
 
-        // Hide the fragments
         if (alertsFragment != null) transaction.setCustomAnimations(
-                R.anim.slide_in_top,  // enter
-                R.anim.fade_out,  // exit
-                R.anim.fade_in,   // popEnter
-                R.anim.slide_out_top  // popExit
-        ).hide(alertsFragment)
-        .hide(settingsFragment)
-        .hide(newsFragment)
-        .hide(snowFragment);
+                R.anim.slide_in_top,
+                R.anim.fade_out,
+                R.anim.fade_in,
+                R.anim.slide_out_top
+        ).hide(alertsFragment);
+        // Note: You had chained .hide() calls which might be an issue if alertsFragment is null.
+        // It's safer to check each fragment individually before hiding.
+        if (settingsFragment != null) transaction.setCustomAnimations(
+                R.anim.slide_in_top,
+                R.anim.fade_out,
+                R.anim.fade_in,
+                R.anim.slide_out_top
+        ).hide(settingsFragment);
+        if (newsFragment != null) transaction.setCustomAnimations(
+                R.anim.slide_in_top,
+                R.anim.fade_out,
+                R.anim.fade_in,
+                R.anim.slide_out_top
+        ).hide(newsFragment);
+        if (snowFragment != null) transaction.setCustomAnimations(
+                R.anim.slide_in_top,
+                R.anim.fade_out,
+                R.anim.fade_in,
+                R.anim.slide_out_top
+        ).hide(snowFragment);
 
-        // Commit the transaction
+
         transaction.commit();
         return true;
     }
 
-    // Show the FragmentAlerts (ensure it's added only once)
-    private void showFragmentAlerts() {
-        if (!isFragmentAlertsAdded) {
-            fragmentAlerts = new FragmentAlerts();
-            FragmentTransaction transaction = getFragmentManager().beginTransaction();
-            transaction.add(R.id.flFragment, fragmentAlerts, "FragmentAlerts");
-            transaction.setCustomAnimations(
-                    R.anim.slide_in_top,  // enter
-                    R.anim.fade_out,  // exit
-                    R.anim.fade_in,   // popEnter
-                    R.anim.slide_out_top  // popExit
-            );
-            transaction.hide(fragmentAlerts); // Initially hide FragmentAlerts
-            transaction.commit();
-            isFragmentAlertsAdded = true;
-        }
-
-        // Now, show FragmentAlerts
-        FragmentTransaction transaction = getFragmentManager().beginTransaction();
-        transaction.setCustomAnimations(
-                R.anim.slide_in_top,  // enter
-                R.anim.fade_out,  // exit
-                R.anim.fade_in,   // popEnter
-                R.anim.slide_out_top  // popExit
-        ).show(fragmentAlerts);  // Show FragmentAlerts
-        transaction.commit();
-    }
-
-    private void showFragmentSettings() {
-        if (!isFragmentSettingsAdded) {
-            fragmentSettings = new SettingsFragment();
-            FragmentTransaction transaction = getFragmentManager().beginTransaction();
-            transaction.add(R.id.flFragment, fragmentSettings, "FragmentSettings");
-            transaction.setCustomAnimations(
-                    R.anim.slide_in_top,  // enter
-                    R.anim.fade_out,  // exit
-                    R.anim.fade_in,   // popEnter
-                    R.anim.slide_out_top  // popExit
-            );
-            transaction.hide(fragmentSettings); // Initially hide FragmentSettings
-            transaction.commit();
-            isFragmentSettingsAdded = true;
-        }
-
-        // Now, show FragmentSettings
-        FragmentTransaction transaction = getFragmentManager().beginTransaction();
-        transaction.setCustomAnimations(
-                R.anim.slide_in_top,  // enter
-                R.anim.fade_out,  // exit
-                R.anim.fade_in,   // popEnter
-                R.anim.slide_out_top  // popExit
-        ).show(fragmentSettings);  // Show FragmentAlerts
-        transaction.commit();
-    }
-    private void showFragmentSnow() {
-        if (!isFragmentSnowAdded) {
-            fragmentSnow = new SnowDayFragment();
-            FragmentTransaction transaction = getFragmentManager().beginTransaction();
-            transaction.add(R.id.flFragment, fragmentSnow, "FragmentSnow");
-            transaction.setCustomAnimations(
-                    R.anim.slide_in_top,  // enter
-                    R.anim.fade_out,  // exit
-                    R.anim.fade_in,   // popEnter
-                    R.anim.slide_out_top  // popExit
-            );
-            transaction.hide(fragmentSnow); // Initially hide FragmentSnow
-            transaction.commit();
-            isFragmentSnowAdded = true;
-        }
-        FragmentTransaction transaction = getFragmentManager().beginTransaction();
-        transaction.setCustomAnimations(
-                R.anim.slide_in_top,  // enter
-                R.anim.fade_out,  // exit
-                R.anim.fade_in,   // popEnter
-                R.anim.slide_out_top  // popExit
-        ).show(fragmentSnow);  // Show FragmentSnow
-        transaction.commit();
-    }
-
-
-
-    // Optional: Hide FragmentAlerts when you navigate back to the MenuFragment
+    // This onStart() method now becomes largely redundant for the fragments
+    // that are being replaced, as new instances will be created each time.
+    // It might still be relevant if other parts of your app manage these fragments differently.
     @Override
     public void onStart() {
         super.onStart();
 
-        // Make sure FragmentAlerts is hidden when we come back to the MenuFragment
-        if (fragmentAlerts != null) {
-            FragmentTransaction transaction = getFragmentManager().beginTransaction();
-            transaction.setCustomAnimations(
-                    R.anim.slide_in_top,  // enter
-                    R.anim.fade_out,  // exit
-                    R.anim.fade_in,   // popEnter
-                    R.anim.slide_out_top  // popExit
-            );
-            transaction.hide(fragmentAlerts);
-            transaction.commit();
-        }
-        if (fragmentSettings != null) {
-            FragmentTransaction transaction = getFragmentManager().beginTransaction();
-            transaction.setCustomAnimations(
-                    R.anim.slide_in_top,  // enter
-                    R.anim.fade_out,  // exit
-                    R.anim.fade_in,   // popEnter
-                    R.anim.slide_out_top  // popExit
-            );
-            transaction.hide(fragmentSettings);
-            transaction.commit();
-        }
-        if (fragmentSnow != null) {
-            FragmentTransaction transaction = getFragmentManager().beginTransaction();
-            transaction.setCustomAnimations(
-                    R.anim.slide_in_top,  // enter
-                    R.anim.fade_out,  // exit
-                    R.anim.fade_in,   // popEnter
-                    R.anim.slide_out_top  // popExit
-            );
-            transaction.hide(fragmentSnow);
-            transaction.commit();
+        if (getParentFragmentManager() != null) { // Check if getParentFragmentManager() is not null
+            FragmentTransaction transaction = getParentFragmentManager().beginTransaction();
+
+            Fragment alertsFragment = getParentFragmentManager().findFragmentByTag("alertsFragment");
+            Fragment settingsFragment = getParentFragmentManager().findFragmentByTag("settingsFragment");
+            Fragment snowFragment = getParentFragmentManager().findFragmentByTag("snowFragment");
+
+            if (alertsFragment != null) {
+                transaction.setCustomAnimations(
+                        R.anim.slide_in_top,
+                        R.anim.fade_out,
+                        R.anim.fade_in,
+                        R.anim.slide_out_top
+                ).hide(alertsFragment);
+            }
+            if (settingsFragment != null) {
+                transaction.setCustomAnimations(
+                        R.anim.slide_in_top,
+                        R.anim.fade_out,
+                        R.anim.fade_in,
+                        R.anim.slide_out_top
+                ).hide(settingsFragment);
+            }
+            if (snowFragment != null) {
+                transaction.setCustomAnimations(
+                        R.anim.slide_in_top,
+                        R.anim.fade_out,
+                        R.anim.fade_in,
+                        R.anim.slide_out_top
+                ).hide(snowFragment);
+            }
+            // Only commit if there are pending operations
+            if (!transaction.isEmpty()) {
+                transaction.commitAllowingStateLoss(); // Use commitAllowingStateLoss if there's a chance of state loss
+            }
         }
     }
 }
