@@ -20,7 +20,7 @@
             android:layout_marginStart="20dp"
             android:layout_marginTop="100dp"
             android:fontFamily="@font/montsemibold"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnBackground"
             android:textSize="36dp"
             android:id="@+id/sdcalctxt"/>
         <EditText
@@ -79,7 +79,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Chance"
-                android:textColor="@color/white"
+                android:textColor="?attr/colorOnBackground"
                 android:textSize="20dp"/>
 
             <LinearLayout
@@ -92,14 +92,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Today: "
-                    android:textColor="@color/white"
+                    android:textColor="?attr/colorOnBackground"
                     android:textSize="16dp"/>
                 <TextView
                     android:layout_width="wrap_content"
                     android:id="@+id/predictionToday"
                     android:layout_height="wrap_content"
                     android:text="idk"
-                    android:textColor="@color/white"
+                    android:textColor="?attr/colorOnBackground"
                     android:textSize="24dp"/>
             </LinearLayout>
             <LinearLayout
@@ -111,21 +111,21 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Tomorrow: "
-                    android:textColor="@color/white"
+                    android:textColor="?attr/colorOnBackground"
                     android:textSize="16dp"/>
                 <TextView
                     android:layout_width="wrap_content"
                     android:id="@+id/predictionTomorrow"
                     android:layout_height="wrap_content"
                     android:text="idk"
-                    android:textColor="@color/white"
+                    android:textColor="?attr/colorOnBackground"
                     android:textSize="24dp"/>
             </LinearLayout>
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text = "Key:"
-                android:textColor="@color/white"
+                android:textColor="?attr/colorOnBackground"
                 android:textSize="16dp"
                 android:layout_marginTop="20dp"/>
             <TableLayout xmlns:android="http://schemas.android.com/apk/res/android"
@@ -135,23 +135,23 @@
                 <TableRow>
                     <TextView
                         android:text="Limited"
-                        android:textColor="@color/white"
+                        android:textColor="?attr/colorOnBackground"
                         android:padding="3dip" />
                     <TextView
                         android:text="No chance"
                         android:gravity="right"
-                        android:textColor="@color/white"
+                        android:textColor="?attr/colorOnBackground"
                         android:padding="3dip" />
                 </TableRow>
 
                 <TableRow>
                     <TextView
                         android:text="0%-55%"
-                        android:textColor="@color/white"
+                        android:textColor="?attr/colorOnBackground"
                         android:padding="3dip" />
                     <TextView
                         android:text="Small chance"
-                        android:textColor="@color/white"
+                        android:textColor="?attr/colorOnBackground"
                         android:gravity="right"
                         android:padding="3dip" />
                 </TableRow>
@@ -159,11 +159,11 @@
                 <TableRow>
                     <TextView
                         android:text="55%-75%"
-                        android:textColor="@color/white"
+                        android:textColor="?attr/colorOnBackground"
                         android:padding="3dip" />
                     <TextView
                         android:text="Delay likely"
-                        android:textColor="@color/white"
+                        android:textColor="?attr/colorOnBackground"
                         android:gravity="right"
                         android:padding="3dip" />
                 </TableRow>
@@ -171,11 +171,11 @@
                 <TableRow>
                     <TextView
                         android:text="75%-87%"
-                        android:textColor="@color/white"
+                        android:textColor="?attr/colorOnBackground"
                         android:padding="3dip" />
                     <TextView
                         android:text="Snow day possible"
-                        android:textColor="@color/white"
+                        android:textColor="?attr/colorOnBackground"
                         android:gravity="right"
                         android:padding="3dip" />
                 </TableRow>
@@ -183,11 +183,11 @@
                 <TableRow>
                     <TextView
                         android:text="87%-99%"
-                        android:textColor="@color/white"
+                        android:textColor="?attr/colorOnBackground"
                         android:padding="3dip" />
                     <TextView
                         android:text="No School/Early Dismissal"
-                        android:textColor="@color/white"
+                        android:textColor="?attr/colorOnBackground"
                         android:gravity="right"
                         android:padding="3dip" />
                 </TableRow>

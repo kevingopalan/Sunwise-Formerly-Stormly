@@ -3,8 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="wrap_content"
-    android:layout_height="150dp">
-
+    android:layout_height="180dp">
     <LinearLayout
         android:id="@+id/text_hourlyhome"
         android:layout_width="wrap_content"
@@ -24,7 +23,7 @@
                 android:layout_height="wrap_content"
                 android:text="time"
                 android:fontFamily="@font/montsemibold"
-                android:textColor="#fff"
+                android:textColor="?attr/colorOnSurface"
                 android:textSize="15sp"
                 android:layout_gravity="center_vertical"/>
 
@@ -41,7 +40,7 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_vertical"
                 android:text="--º"
-                android:textColor="#fff"
+                android:textColor="?attr/colorOnSurface"
                 android:textSize="25sp" />
 
         <View
@@ -76,7 +75,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"
             android:text = "---"
-            android:textColor="#fff"
+            android:textColor="?attr/colorOnSurface"
             android:layout_marginBottom="10dp"/>
         <LinearLayout
             android:layout_width="wrap_content"
@@ -95,7 +94,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="--%"
-                android:textColor="#fff"
+                android:textColor="?attr/colorOnSurface"
                 android:textSize="15sp"
                 android:layout_gravity="center_vertical"
                 android:layout_marginStart="10dp" />
@@ -116,7 +115,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="\?"
-                android:textColor="#fff"
+                android:textColor="?attr/colorOnSurface"
                 android:textSize="15sp"
                 android:layout_gravity="center_vertical"
                 android:layout_marginStart="10dp" />

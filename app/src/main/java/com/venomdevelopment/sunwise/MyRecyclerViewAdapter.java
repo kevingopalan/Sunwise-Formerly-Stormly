@@ -68,9 +68,27 @@ public class MyRecyclerViewAdapter extends RecyclerView.Adapter<MyRecyclerViewAd
         holder.myTextView.setText(hourlyForecast);
         holder.myHrView.setText(hourlyTime);
         holder.descTxt.setText(descstring);
-        holder.animationView.setAnimation(holder.itemView.getResources().getIdentifier(lottieAnimString, "raw", holder.itemView.getContext().getPackageName()));
-        holder.animationView.loop(true);
-        holder.animationView.playAnimation();
+        
+        // Safe animation loading with error handling
+        try {
+            int animationResId = holder.itemView.getResources().getIdentifier(lottieAnimString, "raw", holder.itemView.getContext().getPackageName());
+            if (animationResId == 0) {
+                Log.w("MyRecyclerViewAdapter", "Missing animation for: " + lottieAnimString + ", falling back to not_available");
+                animationResId = holder.itemView.getResources().getIdentifier("not_available", "raw", holder.itemView.getContext().getPackageName());
+            }
+            if (animationResId != 0) {
+                holder.animationView.setAnimation(animationResId);
+                holder.animationView.loop(true);
+                holder.animationView.playAnimation();
+            } else {
+                Log.e("MyRecyclerViewAdapter", "Even not_available animation not found, hiding animation view");
+                holder.animationView.setVisibility(View.GONE);
+            }
+        } catch (Exception e) {
+            Log.e("MyRecyclerViewAdapter", "Error loading animation: " + lottieAnimString, e);
+            holder.animationView.setVisibility(View.GONE);
+        }
+        
         holder.myPrec.setText(prec);
 
         // Set the visibility based on the stored state for this item

@@ -27,7 +27,7 @@
             android:fontFamily="@font/montsemibold"
             android:layout_marginBottom="30dp"
             android:textSize="12sp"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnBackground"
             android:gravity="center_vertical"
             android:id="@+id/text_alertContent"
             android:ellipsize="end"
@@ -39,7 +39,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_margin="12dp"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnBackground"
             android:textSize="12sp"
             android:visibility="gone"
             android:padding="10dp" />

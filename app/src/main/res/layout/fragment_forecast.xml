@@ -1,312 +1,347 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-xmlns:tools="http://schemas.android.com/tools"
-xmlns:app="http://schemas.android.com/apk/res-auto"
-android:layout_width="match_parent"
-android:layout_height="match_parent"
-tools:context=".ForecastFragment"
-android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|uiMode">
-
-<androidx.constraintlayout.widget.ConstraintLayout
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content">
-    <EditText
-        android:id="@+id/text_search"
-        android:layout_width="0dp"
-        android:layout_height="56dp"
-        android:layout_marginEnd="56dp"
-        android:padding="16dp"
-        android:autofillHints="postalAddress"
-        android:background="@drawable/bottomnav"
-        android:hint="Your address here"
-        android:textColor="#ffffff"
-        android:inputType="textPostalAddress"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        android:fontFamily="@font/montsemibold"/>
+    android:layout_height="match_parent"
+    tools:context=".ForecastFragment">
 
-    <Button
-        android:id="@+id/search"
-        android:layout_width="56dp"
-        android:layout_height="56dp"
-        android:layout_marginTop="0dp"
-        android:background="@drawable/bottomnav"
-        android:backgroundTint="#FFFFFF"
-        android:drawableLeft="@drawable/go"
-        android:paddingStart="18dp"
-        android:textColor="#222"
-        app:backgroundTint="#222"
-        app:layout_constraintStart_toEndOf="@id/text_search"
-        app:layout_constraintTop_toTopOf="@id/text_search"/>
-
-
-    <com.airbnb.lottie.LottieAnimationView
-        android:id="@+id/animation_view"
+    <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="120dp"
-        app:layout_constraintHeight="80dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintWidth="80dp"
-        app:lottie_autoPlay="true"
-        app:lottie_loop="true"
-        app:lottie_rawRes="@raw/clear_day" />
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|uiMode">
 
-    <TextView
-        android:id="@+id/currentTempText"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:fontFamily="@font/montbold"
-        android:text="--º"
-        android:textColor="#fff"
-        android:textSize="72sp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/animation_view" />
-
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/hltemps"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="0dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/currentTempText">
-
-        <TextView
-            android:id="@+id/highTempText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:fontFamily="@font/montsemibold"
-            android:layout_marginEnd="4dp"
-            android:text="---"
-            android:textColor="@android:color/holo_red_light"
-            android:textSize="20sp"
-            app:layout_constraintEnd_toStartOf="@id/slash"
-            app:layout_constraintTop_toTopOf="parent" />
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            app:layout_constraintEnd_toStartOf="@id/lowTempText"
-            app:layout_constraintTop_toTopOf="parent"
-            android:textColor="#ffffff"
-            android:text="/"
-            android:id="@+id/slash"
-            android:textSize="20sp"/>
-
-        <TextView
-            android:id="@+id/lowTempText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="4dp"
-            android:fontFamily="@font/montsemibold"
-            android:text="---"
-            android:textColor="@android:color/holo_blue_light"
-            android:textSize="20sp"
-            app:layout_constraintStart_toEndOf="@id/slash"
-            app:layout_constraintTop_toTopOf="parent" />
-    </androidx.constraintlayout.widget.ConstraintLayout>
-
-    <TextView
-        android:id="@+id/text_desc"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="---"
-        android:textColor="#ffffff"
-        android:textSize="20sp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/hltemps"
-        android:fontFamily="@font/montsemibold" />
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:weightSum="1"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/text_desc"
-        android:layout_marginLeft="20dp"
-        android:layout_marginRight="20dp"
-        android:layout_marginTop="60dp"
-        android:id="@+id/basicinfo"
-        android:background="@drawable/main_background">
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_weight=".3333333333333333333333333333333333333"
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content">
-            <LinearLayout
+            <TextView
+                android:id="@+id/locationDisplay"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_marginStart="0dp"
+                android:padding="16dp"
+                android:background="?attr/colorSurfaceContainer"
+                android:text="Location"
+                android:textColor="?attr/colorOnSurface"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:gravity="center_vertical"
+                app:layout_constraintEnd_toStartOf="@id/saveLocationButton"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                android:fontFamily="@font/montsemibold"/>
+
+            <Button
+                android:id="@+id/saveLocationButton"
+                android:layout_width="wrap_content"
+                android:layout_height="56dp"
+                android:layout_marginTop="0dp"
+                android:layout_marginStart="0dp"
+                android:layout_marginEnd="0dp"
+                android:background="?attr/colorSurfaceContainer"
+                android:backgroundTint="?attr/colorSurfaceContainer"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:fontFamily="@font/montsemibold"
+                android:textAllCaps="false"
+                android:letterSpacing="0.02"
+                android:text="Save"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="14sp"
+                app:backgroundTint="?attr/colorSurfaceContainer"
+                app:layout_constraintStart_toEndOf="@id/locationDisplay"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="@id/locationDisplay"/>
+
+            <com.airbnb.lottie.LottieAnimationView
+                android:id="@+id/animation_view"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:layout_marginEnd="5dp"
-                android:layout_marginTop="5dp"
-                android:padding="10dp"
-                android:orientation="vertical">
-                <ImageView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:src="@drawable/humidityicon"
-                    android:layout_gravity="top"/>
+                android:layout_height="wrap_content"
+                android:layout_marginTop="120dp"
+                app:layout_constraintHeight="80dp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintWidth="80dp"
+                app:lottie_autoPlay="true"
+                app:lottie_loop="true"
+                app:lottie_rawRes="@raw/clear_day" />
+
+            <TextView
+                android:id="@+id/currentTempText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/montbold"
+                android:text="--º"
+                android:textColor="#ccffffff"
+                android:textSize="72sp"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/animation_view" />
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/hltemps"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="0dp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/currentTempText">
+
                 <TextView
-                    android:layout_width="match_parent"
-                    android:textAlignment="center"
+                    android:id="@+id/highTempText"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:text="Humidity"
-                    android:fontFamily = "@font/montsemibold"
-                    android:textColor="#fff"/>
+                    android:fontFamily="@font/montsemibold"
+                    android:layout_marginEnd="4dp"
+                    android:text="---"
+                    android:textColor="@android:color/holo_red_light"
+                    android:textSize="20sp"
+                    app:layout_constraintEnd_toStartOf="@id/slash"
+                    app:layout_constraintTop_toTopOf="parent" />
                 <TextView
-                    android:layout_width="match_parent"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:id="@+id/humidity"
-                    android:text="--%"
-                    android:fontFamily = "@font/montbold"
-                    android:textColor="#fff"
-                    android:textAlignment="center"
-                    android:textSize="24sp"/>
-            </LinearLayout>
-        </LinearLayout>
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_weight=".3333333333333333333333333333333333333"
-            android:layout_height="wrap_content">
-            <LinearLayout
-                android:orientation="vertical"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:layout_marginEnd="5dp"
-                android:layout_marginTop="5dp"
-                android:layout_marginStart="5dp"
-                android:padding="10dp">
-                <ImageView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:src="@drawable/rainy_24px"
-                    android:layout_gravity="top"/>
-                <TextView
-                    android:layout_marginTop="10dp"
-                    android:layout_width="match_parent"
-                    android:textAlignment="center"
-                    android:layout_height="wrap_content"
-                    android:text="Rain"
-                    android:fontFamily = "@font/montsemibold"
-                    android:textColor="#fff"/>
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:id="@+id/precipitation"
-                    android:text="--%"
-                    android:fontFamily = "@font/montbold"
-                    android:textColor="#fff"
-                    android:textAlignment="center"
-                    android:textSize="24sp"/>
-            </LinearLayout>
-        </LinearLayout>
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_weight=".3333333333333333333333333333333333333"
-            android:layout_height="wrap_content">
-            <LinearLayout
-                android:orientation="vertical"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:layout_marginTop="5dp"
-                android:layout_marginStart="5dp"
-                android:padding="10dp">
-                <ImageView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:src="@drawable/baseline_wind_24"
-                    android:layout_gravity="top"/>
-                <TextView
-                    android:layout_marginTop="10dp"
-                    android:layout_width="match_parent"
-                    android:textAlignment="center"
-                    android:layout_height="wrap_content"
-                    android:text="Wind"
-                    android:fontFamily = "@font/montsemibold"
-                    android:textColor="#fff"/>
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="--mph"
-                    android:id="@+id/wind"
-                    android:layout_marginTop="2dp"
-                    android:fontFamily = "@font/montbold"
-                    android:textColor="#fff"
-                    android:textAlignment="center"
+                    app:layout_constraintEnd_toStartOf="@id/lowTempText"
+                    app:layout_constraintTop_toTopOf="parent"
+                    android:textColor="#ccffff"
+                    android:text="/"
+                    android:id="@+id/slash"
                     android:textSize="20sp"/>
+
+                <TextView
+                    android:id="@+id/lowTempText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:fontFamily="@font/montsemibold"
+                    android:text="---"
+                    android:textColor="@android:color/holo_blue_light"
+                    android:textSize="20sp"
+                    app:layout_constraintStart_toEndOf="@id/slash"
+                    app:layout_constraintTop_toTopOf="parent" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+            <TextView
+                android:id="@+id/text_desc"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:layout_marginStart="20dp"
+                android:layout_marginEnd="20dp"
+                android:text="---"
+                android:textAlignment="center"
+                android:textColor="#ccffffff"
+                android:textSize="20sp"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/hltemps"
+                android:fontFamily="@font/montsemibold" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:weightSum="1"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/text_desc"
+                android:layout_marginLeft="20dp"
+                android:layout_marginRight="20dp"
+                android:layout_marginTop="60dp"
+                android:id="@+id/basicinfo"
+                android:background="@drawable/main_background">
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_weight=".3333333333333333333333333333333333333"
+                    android:layout_height="wrap_content">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_marginEnd="5dp"
+                        android:layout_marginTop="5dp"
+                        android:padding="10dp"
+                        android:orientation="vertical">
+                        <ImageView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:src="@drawable/humidityicon"
+                            android:layout_gravity="top"/>
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:textAlignment="center"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:text="Humidity"
+                            android:fontFamily = "@font/montsemibold"
+                            android:textColor="?attr/colorOnSurface"/>
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:id="@+id/humidity"
+                            android:text="--%"
+                            android:fontFamily = "@font/montbold"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textAlignment="center"
+                            android:textSize="24sp"/>
+                    </LinearLayout>
+                </LinearLayout>
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_weight=".3333333333333333333333333333333333333"
+                    android:layout_height="wrap_content">
+                    <LinearLayout
+                        android:orientation="vertical"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_marginEnd="5dp"
+                        android:layout_marginTop="5dp"
+                        android:layout_marginStart="5dp"
+                        android:padding="10dp">
+                        <ImageView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:src="@drawable/rainy_24px"
+                            android:layout_gravity="top"/>
+                        <TextView
+                            android:layout_marginTop="10dp"
+                            android:layout_width="match_parent"
+                            android:textAlignment="center"
+                            android:layout_height="wrap_content"
+                            android:text="Rain"
+                            android:fontFamily = "@font/montsemibold"
+                            android:textColor="?attr/colorOnSurface"/>
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:id="@+id/precipitation"
+                            android:text="--%"
+                            android:fontFamily = "@font/montbold"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textAlignment="center"
+                            android:textSize="24sp"/>
+                    </LinearLayout>
+                </LinearLayout>
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_weight=".3333333333333333333333333333333333333"
+                    android:layout_height="wrap_content">
+                    <LinearLayout
+                        android:orientation="vertical"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_marginTop="5dp"
+                        android:layout_marginStart="5dp"
+                        android:padding="10dp">
+                        <ImageView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:src="@drawable/baseline_wind_24"
+                            android:layout_gravity="top"/>
+                        <TextView
+                            android:layout_marginTop="10dp"
+                            android:layout_width="match_parent"
+                            android:textAlignment="center"
+                            android:layout_height="wrap_content"
+                            android:text="Wind"
+                            android:fontFamily = "@font/montsemibold"
+                            android:textColor="?attr/colorOnSurface"/>
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="--mph"
+                            android:id="@+id/wind"
+                            android:layout_marginTop="2dp"
+                            android:fontFamily = "@font/montbold"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textAlignment="center"
+                            android:textSize="20sp"/>
+                    </LinearLayout>
+                </LinearLayout>
             </LinearLayout>
-        </LinearLayout>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/hourlyRecyclerView"
+                android:layout_width="match_parent"
+                android:layout_height="180dp"
+                android:layout_marginLeft="20dp"
+                android:layout_marginTop="20dp"
+                android:layout_marginRight="20dp"
+                android:background="@drawable/main_background"
+                android:clipToPadding="false"
+                android:orientation="horizontal"
+                android:overScrollMode="never"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/basicinfo"
+                tools:ignore="UnusedAttribute" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/dailyRecyclerView"
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                android:layout_marginLeft="20dp"
+                android:clipToOutline="true"
+                android:layout_marginRight="20dp"
+                android:layout_marginBottom="20dp"
+                android:layout_marginTop="20dp"
+                android:overScrollMode="never"
+                android:background="@drawable/main_background"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/hourlyRecyclerView"
+                tools:ignore="UnusedAttribute" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                android:id="@+id/hourlygraph"
+                android:orientation="horizontal"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/dailyRecyclerView"
+                android:layout_margin="20dp"
+                android:padding="20dp"
+                android:background="@drawable/main_background">
+                <com.jjoe64.graphview.GraphView
+                    android:id="@+id/hrGraphContent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentTop="true"
+                    android:fontFamily = "@font/montsemibold"/>
+            </LinearLayout>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                android:padding="20dp"
+                android:id="@+id/dailygraph"
+                android:orientation="horizontal"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/hourlygraph"
+                android:layout_margin="20dp"
+                android:background="@drawable/main_background"
+                android:fontFamily = "@font/montsemibold">
+                <com.jjoe64.graphview.GraphView
+                    android:id="@+id/dayGraphContent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentTop="true"
+                    android:fontFamily = "@font/montsemibold"/>
+            </LinearLayout>
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <LinearLayout
+        android:id="@+id/progressBar"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone"
+        android:background="?android:colorBackground"
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <ProgressBar
+            style="?android:attr/progressBarStyleLarge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:indeterminateTint="?attr/colorOnSurface" />
+
     </LinearLayout>
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/hourlyRecyclerView"
-        android:layout_width="match_parent"
-        android:layout_height="150dp"
-        android:layout_marginLeft="20dp"
-        android:layout_marginTop="20dp"
-        android:layout_marginRight="20dp"
-        android:background="@drawable/main_background"
-        android:clipToPadding="false"
-        android:orientation="horizontal"
-        android:overScrollMode="never"
-        android:paddingStart="10dp"
-        android:paddingEnd="10dp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/basicinfo"
-        tools:ignore="UnusedAttribute" />
-
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/dailyRecyclerView"
-        android:layout_width="match_parent"
-        android:layout_height="200dp"
-        android:layout_marginLeft="20dp"
-        android:clipToOutline="true"
-        android:layout_marginRight="20dp"
-        android:layout_marginBottom="20dp"
-        android:layout_marginTop="20dp"
-        android:overScrollMode="never"
-        android:background="@drawable/main_background"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/hourlyRecyclerView"
-        tools:ignore="UnusedAttribute" />
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="200dp"
-        android:id="@+id/hourlygraph"
-        android:orientation="horizontal"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/dailyRecyclerView"
-        android:layout_margin="20dp"
-        android:padding="20dp"
-        android:background="@drawable/main_background">
-        <com.jjoe64.graphview.GraphView
-            android:id="@+id/hrGraphContent"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_alignParentTop="true"
-            android:fontFamily = "@font/montsemibold"/>
-    </LinearLayout>
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="200dp"
-        android:padding="20dp"
-        android:id="@+id/dailygraph"
-        android:orientation="horizontal"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/hourlygraph"
-        android:layout_margin="20dp"
-        android:background="@drawable/main_background"
-        android:fontFamily = "@font/montsemibold">
-        <com.jjoe64.graphview.GraphView
-            android:id="@+id/dayGraphContent"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_alignParentTop="true"
-            android:fontFamily = "@font/montsemibold"/>
-    </LinearLayout>
-</androidx.constraintlayout.widget.ConstraintLayout>
-</androidx.core.widget.NestedScrollView>
+</FrameLayout> 

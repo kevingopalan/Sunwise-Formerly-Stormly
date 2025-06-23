@@ -17,7 +17,7 @@
         android:ellipsize="end"
         android:maxLines="1"
         android:textSize="16sp"
-        android:textColor="@color/white"
+        android:textColor="?attr/colorOnBackground"
         tools:text="City, State" />
 
     <com.airbnb.lottie.LottieAnimationView
@@ -36,8 +36,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
-        android:textColor="@color/white"
+        android:textColor="?attr/colorOnBackground"
         android:textSize="24sp"
-        tools:text="72°F" />
+        tools:text="--" />
 
 </LinearLayout>

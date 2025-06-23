@@ -1,5 +1,6 @@
 package com.venomdevelopment.sunwise;
 
+import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
@@ -8,6 +9,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import androidx.fragment.app.Fragment;
@@ -17,7 +19,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.android.volley.Request;
-import com.android.volley.Response;
+import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.JsonArrayRequest;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
@@ -34,11 +36,13 @@ public class FragmentAlerts extends Fragment {
     private static final String TAG = "FragmentAlerts";
     private RecyclerView recyclerView;
     private AlertsRecyclerViewAdapter adapter;
+    private LinearLayout progressBar;
 
-    private static final String NOMINATIM_URL = "https://osm-nominatim.gs.mil/search?q=";
     private static final String BASE_URL_POINTS = "https://api.weather.gov/alerts/active?point=";
-    private static final String USER_AGENT = "Mozilla/5.0";  // Make sure to set a User-Agent
+    private static final String USER_AGENT = "Sunwise/v0-prerelease" + System.getProperty("http.agent");  // Make sure to set a User-Agent
     private static final String myPref = "addressPref";  // Your SharedPreferences name
+
+    private RequestQueue requestQueue;
 
     @Nullable
     @Override
@@ -48,12 +52,14 @@ public class FragmentAlerts extends Fragment {
         View view = inflater.inflate(R.layout.fragment_alerts, container, false);
 
         // Set up RecyclerView
-        recyclerView = view.findViewById(R.id.alertsRecycler);  // Adjusted the RecyclerView ID
+        recyclerView = view.findViewById(R.id.alertsRecyclerView);  // Adjusted the RecyclerView ID
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
 
         // Initialize the adapter
-        adapter = new AlertsRecyclerViewAdapter(getContext(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>());;
+        adapter = new AlertsRecyclerViewAdapter(getContext(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
         recyclerView.setAdapter(adapter);
+
+        progressBar = view.findViewById(R.id.progressBar);
 
         // Fetch address from SharedPreferences
         String address = getPreferenceValue();
@@ -65,38 +71,143 @@ public class FragmentAlerts extends Fragment {
             fetchGeocodingData(address);
         }
 
+        requestQueue = SunwiseApp.getInstance().getRequestQueue();
+
         return view;
     }
 
     private void fetchGeocodingData(String address) {
+        showLoading();
         // Encode the address for the URL
         String encodedAddress = address.replaceAll(" ", "+");
-        String geocodeUrl = NOMINATIM_URL + encodedAddress + "&format=json&addressdetails=1";
+        String baseUrl = NominatimHostManager.getRandomSearchUrl() + encodedAddress;
+        final String geocodeUrl;
+        final boolean isCensus = NominatimHostManager.isCensusGeocoderUrl(baseUrl);
+        if (isCensus) {
+            geocodeUrl = baseUrl + NominatimHostManager.getCensusGeocoderParams();
+        } else {
+            geocodeUrl = baseUrl + "&format=json&addressdetails=1";
+        }
+
+        if (isCensus) {
+            // Use JsonObjectRequest for Census
+            JsonObjectRequest jsonObjectRequest = new JsonObjectRequest
+                    (Request.Method.GET, geocodeUrl, null, response -> {
+                        try {
+                            GeocodingResponseParser.GeocodingResult result =
+                                    GeocodingResponseParser.parseGeocodingResponse(response, geocodeUrl);
+                            if (result != null) {
+                                NominatimHostManager.recordHostSuccess(geocodeUrl);
+                                String pointsUrl = BASE_URL_POINTS + result.getLatitude() + "," + result.getLongitude();
+                                fetchWeatherData(pointsUrl);
+                                hideLoading();
+                            } else {
+                                NominatimHostManager.addDelay(() -> {
+                                    if (isAdded()) fetchGeocodingDataWithFallback(address);
+                                });
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            NominatimHostManager.addDelay(() -> {
+                                if (isAdded()) fetchGeocodingDataWithFallback(address);
+                            });
+                        }
+                    }, error -> {
+                        Log.e(TAG, "Error fetching geocoding data from Census Geocoder: " + error.getMessage());
+                        NominatimHostManager.addDelay(() -> {
+                            if (isAdded()) fetchGeocodingDataWithFallback(address);
+                        });
+                    }) {
+                @Override
+                public java.util.Map<String, String> getHeaders() {
+                    java.util.Map<String, String> headers = new java.util.HashMap<>();
+                    headers.put("User-Agent", USER_AGENT);
+                    return headers;
+                }
+            };
+            requestQueue.getCache().clear();
+            jsonObjectRequest.setShouldCache(false);
+            if (isAdded()) requestQueue.add(jsonObjectRequest);
+        } else {
+            // Use JsonArrayRequest for Nominatim
+            JsonArrayRequest jsonArrayRequest = new JsonArrayRequest
+                    (Request.Method.GET, geocodeUrl, null, response -> {
+                        try {
+                            GeocodingResponseParser.GeocodingResult result =
+                                    GeocodingResponseParser.parseGeocodingResponse(response, geocodeUrl);
+                            if (result != null) {
+                                NominatimHostManager.recordHostSuccess(geocodeUrl);
+                                String pointsUrl = BASE_URL_POINTS + result.getLatitude() + "," + result.getLongitude();
+                                fetchWeatherData(pointsUrl);
+                                hideLoading();
+                            } else {
+                                NominatimHostManager.addDelay(() -> {
+                                    if (isAdded()) fetchGeocodingDataWithFallback(address);
+                                });
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            NominatimHostManager.addDelay(() -> {
+                                if (isAdded()) fetchGeocodingDataWithFallback(address);
+                            });
+                        }
+                    }, error -> {
+                        Log.e(TAG, "Error fetching geocoding data from primary host: " + error.getMessage());
+                        NominatimHostManager.addDelay(() -> {
+                            if (isAdded()) fetchGeocodingDataWithFallback(address);
+                        });
+                    }) {
+                @Override
+                public java.util.Map<String, String> getHeaders() {
+                    java.util.Map<String, String> headers = new java.util.HashMap<>();
+                    headers.put("User-Agent", USER_AGENT);
+                    return headers;
+                }
+            };
+            requestQueue.getCache().clear();
+            jsonArrayRequest.setShouldCache(false);
+            if (isAdded()) requestQueue.add(jsonArrayRequest);
+        }
+    }
+
+    private void fetchGeocodingDataWithFallback(String address) {
+        if (!isAdded()) return;
+        // Encode the address for the URL
+        String encodedAddress = address.replaceAll(" ", "+");
+        String geocodeUrl = NominatimHostManager.getFallbackSearchUrl() + encodedAddress + "&format=json&addressdetails=1";
 
         JsonArrayRequest jsonArrayRequest = new JsonArrayRequest
-                (Request.Method.GET, geocodeUrl, null, new Response.Listener<JSONArray>() {
-                    @Override
-                    public void onResponse(JSONArray response) {
-                        try {
-                            // Get the first result
-                            JSONObject firstResult = response.getJSONObject(0);
-                            String lat = firstResult.getString("lat");
-                            String lon = firstResult.getString("lon");
-
+                (Request.Method.GET, geocodeUrl, null, response -> {
+                    try {
+                        // Use the new parser to handle different API formats
+                        GeocodingResponseParser.GeocodingResult result = 
+                            GeocodingResponseParser.parseGeocodingResponse(response, geocodeUrl);
+                        
+                        if (result != null) {
+                            NominatimHostManager.recordHostSuccess(geocodeUrl);
                             // Build the points URL using the coordinates
-                            String pointsUrl = BASE_URL_POINTS + lat + "," + lon;
+                            String pointsUrl = BASE_URL_POINTS + result.getLatitude() + "," + result.getLongitude();
                             fetchWeatherData(pointsUrl);
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                            Toast.makeText(getContext(), "Error parsing geocoding data", Toast.LENGTH_SHORT).show();
+                            hideLoading();
+                        } else {
+                            // Try Census Geocoder as final fallback
+                            NominatimHostManager.addDelay(() -> {
+                                if (isAdded()) fetchGeocodingDataWithCensusFallback(address);
+                            });
                         }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        // Try Census Geocoder as final fallback
+                        NominatimHostManager.addDelay(() -> {
+                            if (isAdded()) fetchGeocodingDataWithCensusFallback(address);
+                        });
                     }
-                }, new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(com.android.volley.VolleyError error) {
-                        Log.e(TAG, "Error fetching geocoding data: " + error.getMessage());
-                        Toast.makeText(getContext(), "Error fetching geocoding data", Toast.LENGTH_SHORT).show();
-                    }
+                }, error -> {
+                    Log.e(TAG, "Error fetching geocoding data from fallback host: " + error.getMessage());
+                    // Try Census Geocoder as final fallback
+                    NominatimHostManager.addDelay(() -> {
+                        if (isAdded()) fetchGeocodingDataWithCensusFallback(address);
+                    });
                 }) {
             @Override
             public java.util.Map<String, String> getHeaders() {
@@ -105,54 +216,134 @@ public class FragmentAlerts extends Fragment {
                 return headers;
             }
         };
+        requestQueue.getCache().clear();
+        jsonArrayRequest.setShouldCache(false);
 
         // Add the request to the Volley request queue
-        Volley.newRequestQueue(getContext()).add(jsonArrayRequest);
+        if (isAdded()) requestQueue.add(jsonArrayRequest);
+    }
+
+    private void fetchGeocodingDataWithCensusFallback(String address) {
+        if (!isAdded()) return;
+        // Encode the address for the URL
+        String encodedAddress = address.replaceAll(" ", "+");
+        final String geocodeUrl = NominatimHostManager.getCensusGeocoderSearchUrl() + encodedAddress + NominatimHostManager.getCensusGeocoderParams();
+        JsonObjectRequest jsonObjectRequest = new JsonObjectRequest
+                (Request.Method.GET, geocodeUrl, null, response -> {
+                    try {
+                        // Use the new parser to handle Census Geocoder format
+                        GeocodingResponseParser.GeocodingResult result = 
+                            GeocodingResponseParser.parseGeocodingResponse(response, geocodeUrl);
+                        
+                        if (result != null) {
+                            NominatimHostManager.recordHostSuccess(geocodeUrl);
+                            // Build the points URL using the coordinates
+                            String pointsUrl = BASE_URL_POINTS + result.getLatitude() + "," + result.getLongitude();
+                            fetchWeatherData(pointsUrl);
+                            hideLoading();
+                        } else {
+                            // All hosts failed, try retry mechanism
+                            tryRetryGeocoding(address);
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        // All hosts failed, try retry mechanism
+                        tryRetryGeocoding(address);
+                    }
+                }, error -> {
+                    Log.e(TAG, "Error fetching geocoding data from Census Geocoder: " + error.getMessage());
+                    // All hosts failed, try retry mechanism
+                    tryRetryGeocoding(address);
+                }) {
+            @Override
+            public java.util.Map<String, String> getHeaders() {
+                java.util.Map<String, String> headers = new java.util.HashMap<>();
+                headers.put("User-Agent", USER_AGENT);
+                return headers;
+            }
+        };
+        requestQueue.getCache().clear();
+        jsonObjectRequest.setShouldCache(false);
+
+        // Add the request to the Volley request queue
+        if (isAdded()) requestQueue.add(jsonObjectRequest);
+    }
+
+    private void tryRetryGeocoding(String address) {
+        if (NominatimHostManager.hasSuccessfulHost()) {
+            Context context = isAdded() ? requireContext() : null;
+            if (context == null) {
+                Log.w(TAG, "Context is null, cannot proceed with retry geocoding");
+                hideLoading();
+                return;
+            }
+            showLoading();
+            GeocodingRetryManager.geocodeWithRetry(
+                context,
+                address,
+                USER_AGENT,
+                result -> {
+                    if (isAdded()) {
+                        String pointsUrl = BASE_URL_POINTS + result.getLatitude() + "," + result.getLongitude();
+                        fetchWeatherData(pointsUrl);
+                    }
+                    hideLoading();
+                },
+                errorMessage -> {
+                    if (isAdded()) {
+                        Toast.makeText(getContext(), errorMessage, Toast.LENGTH_LONG).show();
+                    }
+                    hideLoading();
+                }
+            );
+        } else {
+            if (isAdded()) {
+                Toast.makeText(getContext(), "Error fetching geocoding data from all available services", Toast.LENGTH_SHORT).show();
+            }
+            hideLoading();
+        }
     }
 
     private void fetchWeatherData(String pointsUrl) {
         // Fetch weather alerts based on the coordinates (pointsUrl)
         JsonObjectRequest jsonObjectRequest = new JsonObjectRequest
-                (Request.Method.GET, pointsUrl, null, new Response.Listener<JSONObject>() {
-                    @Override
-                    public void onResponse(JSONObject response) {
-                        try {
-                            // Parse the JSON response for weather alerts
-                            JSONArray featuresArray = response.getJSONArray("features");
+                (Request.Method.GET, pointsUrl, null, response -> {
+                    try {
+                        // Parse the JSON response for weather alerts
+                        JSONArray featuresArray = response.getJSONArray("features");
 
-                            List<String> alertDescriptions = new ArrayList<>();
-                            List<String> alertTypes = new ArrayList<>();
-                            List<String> alertHeadlines = new ArrayList<>();
+                        List<String> alertDescriptions = new ArrayList<>();
+                        List<String> alertTypes = new ArrayList<>();
+                        List<String> alertHeadlines = new ArrayList<>();
 
-                            // Loop through the alerts and add them to the lists
-                            for (int i = 0; i < featuresArray.length(); i++) {
-                                JSONObject alert = featuresArray.getJSONObject(i);
-                                JSONObject properties = alert.getJSONObject("properties");
-                                String headline = properties.getString("headline");
-                                String type = "";
-                                Log.d(TAG, "Headline: " + headline);
-                                String event = properties.getString("event");
-                                String description = properties.getString("description");
-                                if (event.toLowerCase().contains("watch")) {
-                                    type = "watch";
-                                } else if (event.toLowerCase().contains("warning")) {
-                                    type = "warning";
-                                } else if (event.toLowerCase().contains("advisory")) {
-                                    type = "advisory";
-                                } else {
-                                    type = "unknown";
-                                }
-                                alertHeadlines.add(event);
-                                alertTypes.add(type);
-                                alertDescriptions.add(headline + System.getProperty("line.separator") + System.getProperty("line.separator") + description);
+                        // Loop through the alerts and add them to the lists
+                        for (int i = 0; i < featuresArray.length(); i++) {
+                            JSONObject alert = featuresArray.getJSONObject(i);
+                            JSONObject properties = alert.getJSONObject("properties");
+                            String headline = properties.getString("headline");
+                            String type;
+                            Log.d(TAG, "Headline: " + headline);
+                            String event = properties.getString("event");
+                            String description = properties.getString("description");
+                            if (event.toLowerCase().contains("watch")) {
+                                type = "watch";
+                            } else if (event.toLowerCase().contains("warning")) {
+                                type = "warning";
+                            } else if (event.toLowerCase().contains("advisory")) {
+                                type = "advisory";
+                            } else {
+                                type = "unknown";
                             }
-
-                            // Update the RecyclerView with the alerts
-                            new Handler(Looper.getMainLooper()).post(() -> updateRecyclerView(alertHeadlines, alertTypes, alertDescriptions));
-
-                        } catch (JSONException e) {
-                            Log.e(TAG, "Error parsing weather data", e);
+                            alertHeadlines.add(event);
+                            alertTypes.add(type);
+                            alertDescriptions.add(headline + System.lineSeparator() + System.lineSeparator() + description);
                         }
+
+                        // Update the RecyclerView with the alerts
+                        new Handler(Looper.getMainLooper()).post(() -> updateRecyclerView(alertHeadlines, alertTypes, alertDescriptions));
+
+                    } catch (JSONException e) {
+                        Log.e(TAG, "Error parsing weather data", e);
                     }
                 }, error -> {
                     // Handle error
@@ -166,9 +357,11 @@ public class FragmentAlerts extends Fragment {
                 return headers;
             }
         };
+        requestQueue.getCache().clear();
+        jsonObjectRequest.setShouldCache(false);
 
         // Add the request to the Volley request queue
-        Volley.newRequestQueue(getContext()).add(jsonObjectRequest);
+        if (isAdded()) requestQueue.add(jsonObjectRequest);
     }
 
     private void updateRecyclerView(List<String> alertHeadlines, List<String> alertTypes, List<String> alertDescriptions) {
@@ -177,27 +370,27 @@ public class FragmentAlerts extends Fragment {
         recyclerView.setAdapter(adapter);
     }
 
+    private void showLoading() {
+        if (progressBar != null) {
+            progressBar.setAlpha(1f);
+            progressBar.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void hideLoading() {
+        if (progressBar != null && progressBar.getVisibility() == View.VISIBLE) {
+            progressBar.animate()
+                .alpha(0f)
+                .setDuration(300)
+                .withEndAction(() -> progressBar.setVisibility(View.GONE))
+                .start();
+        }
+    }
 
     // Method to get the stored address from SharedPreferences
     public String getPreferenceValue() {
-        SharedPreferences sp = getActivity().getSharedPreferences(myPref, 0);
+        SharedPreferences sp = requireActivity().getSharedPreferences(myPref, 0);
         return sp.getString("address", "");
     }
 
-    // Method to store an address in SharedPreferences
-    public void writeToPreference(String thePreference) {
-        SharedPreferences.Editor editor = getActivity().getSharedPreferences(myPref, 0).edit();
-        editor.putString("address", thePreference);
-        editor.commit();
-    }
-
-    // Models for the NWS API response
-    public static class Alert {
-        Properties properties;
-    }
-
-    public static class Properties {
-        String event;
-        String headline;
-    }
 }

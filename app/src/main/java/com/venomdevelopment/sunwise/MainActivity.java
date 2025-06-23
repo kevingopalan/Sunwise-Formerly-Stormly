@@ -1,105 +1,178 @@
 package com.venomdevelopment.sunwise;
 
 import android.annotation.SuppressLint;
-import android.app.Activity;
+import android.content.SharedPreferences;
+import android.content.Context;
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.view.MenuItem;
 import android.view.Window;
 import android.view.WindowManager;
+import android.view.View;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
+import androidx.appcompat.widget.Toolbar;
+import androidx.core.content.ContextCompat;
+import androidx.core.view.GravityCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
-import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.android.material.navigation.NavigationView;
 
 public class MainActivity extends AppCompatActivity
-        implements BottomNavigationView.OnNavigationItemSelectedListener,
+        implements NavigationView.OnNavigationItemSelectedListener,
         HomeFragment.OnNavigateToForecastListener {
-    BottomNavigationView bottomNavigationView;
+
+    private DrawerLayout drawerLayout;
+    private ActionBarDrawerToggle drawerToggle;
+    private NavigationView navigationView;
+    private FragmentManager fragmentManager;
+    private String currentDrawerFragmentTag = "home"; // Track current drawer fragment
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        
+        // Apply theme before setting content view
+        applyTheme();
+        
         setContentView(R.layout.activity_main);
-        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
-
-        bottomNavigationView = findViewById(R.id.bottomNavigationView);
-        bottomNavigationView.setOnNavigationItemSelectedListener(this);
-        // Set the initial selected item (likely Home)
+        
+        // Setup toolbar
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+        
+        // Setup navigation drawer
+        drawerLayout = findViewById(R.id.drawer_layout);
+        navigationView = findViewById(R.id.nav_view);
+        navigationView.setNavigationItemSelectedListener(this);
+        
+        // Setup drawer toggle
+        drawerToggle = new ActionBarDrawerToggle(
+            this, drawerLayout, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
+        drawerLayout.addDrawerListener(drawerToggle);
+        drawerToggle.syncState();
+        
+        // Get fragment manager
+        fragmentManager = getSupportFragmentManager();
+        
+        // Set default fragment (Home)
         if (savedInstanceState == null) {
-            bottomNavigationView.setSelectedItemId(R.id.home);
-            loadFragment(new HomeFragment(), "homeFragment"); // Assuming loadFragment handles the initial transaction
+            loadFragment(new HomeFragment(), "home");
+            navigationView.setCheckedItem(R.id.nav_home);
         }
-        bottomNavigationView.setSelectedItemId(R.id.home); // Set the initial selected item
-
-        Window window = this.getWindow();
-        window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-        window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
-        window.setStatusBarColor(this.getResources().getColor(R.color.statusbarcolor));
-        window.setNavigationBarColor(this.getResources().getColor(R.color.statusbarcolor));
-
-        // Load the initial fragment
-        loadFragment(new HomeFragment(), "homeFragment");
     }
 
-    @SuppressLint("NonConstantResourceId")
+    @Override
+    public void onBackPressed() {
+        if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+            drawerLayout.closeDrawer(GravityCompat.START);
+        } else if (fragmentManager.getBackStackEntryCount() > 0) {
+            // If we're in a forecast fragment, go back to the drawer fragment
+            fragmentManager.popBackStack();
+        } else {
+            super.onBackPressed();
+        }
+    }
+
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
-        androidx.fragment.app.Fragment fragment = null;
-        String tag = null;
-
-        switch (item.getItemId()) {
-            case R.id.menu:
-                fragment = new MenuFragment();
-                tag = "menuFragment";
-                break;
-            case R.id.home:
-                fragment = new HomeFragment();
-                tag = "homeFragment";
-                break;
-            case R.id.forecast:
-                fragment = new ForecastFragment();
-                tag = "forecastFragment";
-                break;
-            // Add cases for other menu items and their corresponding fragments
+        int id = item.getItemId();
+        Fragment fragment = null;
+        String tag = "";
+        
+        if (id == R.id.nav_home) {
+            fragment = new HomeFragment();
+            tag = "home";
+        } else if (id == R.id.nav_alerts) {
+            fragment = new FragmentAlerts();
+            tag = "alerts";
+        } else if (id == R.id.nav_settings) {
+            fragment = new SettingsFragment();
+            tag = "settings";
+        } else if (id == R.id.nav_snow_day) {
+            fragment = new SnowDayFragment();
+            tag = "snow_day";
         }
-
+        
         if (fragment != null) {
+            // Clear back stack when navigating from drawer
+            fragmentManager.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE);
             loadFragment(fragment, tag);
-            return true;
+            navigationView.setCheckedItem(id);
         }
-        return false;
+        
+        drawerLayout.closeDrawer(GravityCompat.START);
+        return true;
     }
 
-
-    public static void setWindowFlag(Activity activity, final int bits, boolean on) {
-        Window win = activity.getWindow();
-        WindowManager.LayoutParams winParams = win.getAttributes();
-        if (on) {
-            winParams.flags |= bits;
+    private void loadFragment(Fragment fragment, String tag) {
+        FragmentTransaction transaction = fragmentManager.beginTransaction();
+        
+        // Hide all existing fragments
+        Fragment homeFragment = fragmentManager.findFragmentByTag("home");
+        Fragment alertsFragment = fragmentManager.findFragmentByTag("alerts");
+        Fragment settingsFragment = fragmentManager.findFragmentByTag("settings");
+        Fragment snowFragment = fragmentManager.findFragmentByTag("snow_day");
+        
+        if (homeFragment != null) transaction.hide(homeFragment);
+        if (alertsFragment != null) transaction.hide(alertsFragment);
+        if (settingsFragment != null) transaction.hide(settingsFragment);
+        if (snowFragment != null) transaction.hide(snowFragment);
+        
+        // Show or add the target fragment
+        Fragment existingFragment = fragmentManager.findFragmentByTag(tag);
+        if (existingFragment != null) {
+            transaction.show(existingFragment);
         } else {
-            winParams.flags &= ~bits;
+            transaction.add(R.id.fragment_container, fragment, tag);
         }
-        win.setAttributes(winParams);
+        
+        // Track the current drawer fragment
+        currentDrawerFragmentTag = tag;
+        
+        transaction.commit();
     }
 
     @Override
-    public void onNavigateToForecast() {
-        bottomNavigationView.setSelectedItemId(R.id.forecast);
-    }
-    private void loadFragment(androidx.fragment.app.Fragment fragment, String tag) {
-        FragmentManager fragmentManager = getSupportFragmentManager();
+    public void onNavigateToForecast(String location) {
+        ForecastFragment forecastFragment = new ForecastFragment();
+        Bundle args = new Bundle();
+        args.putString("location", location);
+        forecastFragment.setArguments(args);
+        
         FragmentTransaction transaction = fragmentManager.beginTransaction();
-        transaction.setCustomAnimations(
-                        R.anim.slide_in,  // enter
-                        R.anim.fade_out,  // exit
-                        R.anim.fade_in,   // popEnter
-                        R.anim.slide_out  // popExit
-                )
-                .replace(R.id.flFragment, fragment, tag)
-                .commit();
+        transaction.replace(R.id.fragment_container, forecastFragment, "forecast");
+        transaction.addToBackStack("forecast");
+        transaction.commit();
+    }
+
+    private void applyTheme() {
+        SharedPreferences prefs = getSharedPreferences("SunwiseSettings", Context.MODE_PRIVATE);
+        boolean darkModeEnabled = prefs.getBoolean("dark_mode_enabled", false);
+        
+        if (darkModeEnabled) {
+            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
+        } else {
+            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
+        }
+    }
+
+    @Override
+    protected void onPostCreate(Bundle savedInstanceState) {
+        super.onPostCreate(savedInstanceState);
+        drawerToggle.syncState();
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        drawerToggle.onConfigurationChanged(newConfig);
     }
 }

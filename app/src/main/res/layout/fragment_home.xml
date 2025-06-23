@@ -1,109 +1,132 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:fillViewport="true">
+    android:layout_height="match_parent">
 
-    <LinearLayout
+    <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp"
-        android:background="@drawable/background_homepage">
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text = "Sunwise"
-            android:textSize="48sp"
-            android:textColor="#fff"
-            android:fontFamily="@font/montbold"
-            android:layout_marginTop="100dp"/>
+        android:layout_height="match_parent"
+        android:fillViewport="true">
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginTop="50dp">
-
-            <EditText
-                android:id="@+id/text_search"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:hint="Enter Location"
-                android:inputType="textPostalAddress" />
-
-            <Button
-                android:id="@+id/search"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:background="?android:colorBackground">
+            <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Search"
-                android:textColor="@color/white"
+                android:text = "Sunwise"
+                android:textSize="48sp"
+                android:textColor="?attr/colorOnBackground"
+                android:fontFamily="@font/montbold"
+                android:layout_marginTop="100dp"/>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="50dp">
+
+                <EditText
+                    android:id="@+id/text_search"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="Enter Location"
+                    android:inputType="textPostalAddress" />
+
+                <Button
+                    android:id="@+id/search"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Search"
+                    android:backgroundTint="?attr/colorSurfaceContainer"
+                    app:backgroundTint="?attr/colorSurfaceContainer"
+                    android:textColor="?attr/colorOnSurface"
+                    android:letterSpacing="0.02"
+                    android:background="@drawable/main_background"
+                    android:textAllCaps="false"
+                    android:paddingStart="20dp"
+                    android:paddingEnd="20dp"/>
+
+            </LinearLayout>
+
+            <Button
+                android:id="@+id/locationButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="Detect Location"
+                android:textColor="?attr/colorOnBackground"
                 android:letterSpacing="0.02"
                 android:background="@drawable/main_background"
-                android:backgroundTint="#222"
-                app:backgroundTint="#222"
+                android:backgroundTint="?attr/colorSurfaceContainer"
+                app:backgroundTint="?attr/colorSurfaceContainer"
                 android:textAllCaps="false"
                 android:paddingStart="20dp"
                 android:paddingEnd="20dp"/>
 
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/detectedLocationRecyclerView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="Saved Locations"
+                android:textStyle="bold"
+                android:textSize="18sp"
+                android:textColor="?attr/colorOnBackground" />
+            <EditText
+                android:id="@+id/savedLocationsSearch"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:hint="Search saved locations"
+                android:inputType="textFilter" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/savedLocationsRecyclerView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:overScrollMode="never"
+                android:layout_marginTop="8dp" />
+
+            <com.airbnb.lottie.LottieAnimationView
+                android:id="@+id/animation_view"
+                android:layout_width="150dp"
+                android:layout_height="150dp"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="16dp"
+                app:lottie_autoPlay="true"
+                app:lottie_loop="true"
+                app:lottie_rawRes="@raw/partly_cloudy_day" />
+
         </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
 
-        <Button
-            android:id="@+id/locationButton"
+    <LinearLayout
+        android:id="@+id/progressBar"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="center"
+        android:visibility="gone"
+        android:background="?android:colorBackground"
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <ProgressBar
+            style="?android:attr/progressBarStyleLarge"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="Detect Location"
-            android:textColor="@color/white"
-            android:letterSpacing="0.02"
-            android:background="@drawable/main_background"
-            android:backgroundTint="#222"
-            app:backgroundTint="#222"
-            android:textAllCaps="false"
-            android:paddingStart="20dp"
-            android:paddingEnd="20dp"/>
-
-        <TextView
-            android:id="@+id/locationTextView"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:textSize="18sp"
-            tools:text="Location will appear here" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="Saved Locations"
-            android:textStyle="bold"
-            android:textSize="18sp" />
-        <EditText
-            android:id="@+id/savedLocationsSearch"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:hint="Search saved locations"
-            android:inputType="textFilter" />
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/savedLocationsRecyclerView"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:overScrollMode="never"
-            android:layout_marginTop="8dp" />
-
-        <com.airbnb.lottie.LottieAnimationView
-            android:id="@+id/animation_view"
-            android:layout_width="150dp"
-            android:layout_height="150dp"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginTop="16dp"
-            app:lottie_autoPlay="true"
-            app:lottie_loop="true"
-            app:lottie_rawRes="@raw/clear_day" />
+            android:indeterminateTint="?attr/colorOnSurface" />
 
     </LinearLayout>
-</androidx.core.widget.NestedScrollView>
+
+</FrameLayout>
