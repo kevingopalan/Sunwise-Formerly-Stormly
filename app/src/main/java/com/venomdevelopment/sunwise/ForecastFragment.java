@@ -96,6 +96,8 @@ public class ForecastFragment extends Fragment {
     private boolean use24HourFormat = false;
     private SharedPreferences sunwisePrefs;
 
+    private final Set<String> processedGeocodeAddresses = new HashSet<>();
+
     public String getPreferenceValue() {
         SharedPreferences sp = getActivity().getSharedPreferences(myPref, 0);
         String str = sp.getString("address", "");
@@ -234,6 +236,7 @@ public class ForecastFragment extends Fragment {
     }
 
     private void fetchGeocodingData(String address) {
+        if (processedGeocodeAddresses.contains(address)) return;
         showLoading();
         // Encode the address for the URL
         String encodedAddress = address.replaceAll(" ", "+");
@@ -257,6 +260,7 @@ public class ForecastFragment extends Fragment {
                                 NominatimHostManager.recordHostSuccess(geocodeUrl);
                                 String pointsUrl = BASE_URL_POINTS + result.getLatitude() + "," + result.getLongitude();
                                 updateLocationDisplay(address);
+                                processedGeocodeAddresses.add(address);
                                 fetchWeatherData(pointsUrl);
                                 hideLoading();
                             } else {
@@ -301,6 +305,7 @@ public class ForecastFragment extends Fragment {
                                 NominatimHostManager.recordHostSuccess(geocodeUrl);
                                 String pointsUrl = BASE_URL_POINTS + result.getLatitude() + "," + result.getLongitude();
                                 updateLocationDisplay(address);
+                                processedGeocodeAddresses.add(address);
                                 fetchWeatherData(pointsUrl);
                                 hideLoading();
                             } else {
@@ -338,6 +343,7 @@ public class ForecastFragment extends Fragment {
     }
 
     private void fetchGeocodingDataWithFallback(String address) {
+        if (processedGeocodeAddresses.contains(address)) return;
         if (!isAdded()) return;
         // Encode the address for the URL
         String encodedAddress = address.replaceAll(" ", "+");
@@ -355,6 +361,7 @@ public class ForecastFragment extends Fragment {
                             // Build the points URL using the coordinates
                             String pointsUrl = BASE_URL_POINTS + result.getLatitude() + "," + result.getLongitude();
                             updateLocationDisplay(address);
+                            processedGeocodeAddresses.add(address);
                             fetchWeatherData(pointsUrl);
                             hideLoading();
                         } else {
@@ -394,6 +401,7 @@ public class ForecastFragment extends Fragment {
     }
 
     private void fetchGeocodingDataWithCensusFallback(String address) {
+        if (processedGeocodeAddresses.contains(address)) return;
         if (!isAdded()) return;
         // Encode the address for the URL
         String encodedAddress = address.replaceAll(" ", "+");
@@ -410,6 +418,7 @@ public class ForecastFragment extends Fragment {
                             // Build the points URL using the coordinates
                             String pointsUrl = BASE_URL_POINTS + result.getLatitude() + "," + result.getLongitude();
                             updateLocationDisplay(address);
+                            processedGeocodeAddresses.add(address);
                             fetchWeatherData(pointsUrl);
                             hideLoading();
                         } else {
@@ -443,6 +452,7 @@ public class ForecastFragment extends Fragment {
     }
 
     private void tryRetryGeocoding(String address) {
+        if (processedGeocodeAddresses.contains(address)) return;
         if (NominatimHostManager.hasSuccessfulHost()) {
             Context context = isAdded() ? requireContext() : null;
             if (context == null) {
@@ -459,6 +469,7 @@ public class ForecastFragment extends Fragment {
                     if (isAdded()) {
                         String pointsUrl = BASE_URL_POINTS + result.getLatitude() + "," + result.getLongitude();
                         updateLocationDisplay(address);
+                        processedGeocodeAddresses.add(address);
                         fetchWeatherData(pointsUrl);
                     }
                     hideLoading();

@@ -29,7 +29,9 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class FragmentAlerts extends Fragment {
 
@@ -43,6 +45,7 @@ public class FragmentAlerts extends Fragment {
     private static final String myPref = "addressPref";  // Your SharedPreferences name
 
     private RequestQueue requestQueue;
+    private final Set<String> processedGeocodeAddresses = new HashSet<>();
 
     @Nullable
     @Override
@@ -78,6 +81,7 @@ public class FragmentAlerts extends Fragment {
     }
 
     private void fetchGeocodingData(String address) {
+        if (processedGeocodeAddresses.contains(address)) return;
         showLoading();
         // Encode the address for the URL
         String encodedAddress = address.replaceAll(" ", "+");
@@ -102,6 +106,7 @@ public class FragmentAlerts extends Fragment {
                                 String pointsUrl = BASE_URL_POINTS + result.getLatitude() + "," + result.getLongitude();
                                 fetchWeatherData(pointsUrl);
                                 hideLoading();
+                                processedGeocodeAddresses.add(address);
                             } else {
                                 NominatimHostManager.addDelay(() -> {
                                     if (isAdded()) fetchGeocodingDataWithFallback(address);
@@ -141,6 +146,7 @@ public class FragmentAlerts extends Fragment {
                                 String pointsUrl = BASE_URL_POINTS + result.getLatitude() + "," + result.getLongitude();
                                 fetchWeatherData(pointsUrl);
                                 hideLoading();
+                                processedGeocodeAddresses.add(address);
                             } else {
                                 NominatimHostManager.addDelay(() -> {
                                     if (isAdded()) fetchGeocodingDataWithFallback(address);
@@ -172,6 +178,7 @@ public class FragmentAlerts extends Fragment {
     }
 
     private void fetchGeocodingDataWithFallback(String address) {
+        if (processedGeocodeAddresses.contains(address)) return;
         if (!isAdded()) return;
         // Encode the address for the URL
         String encodedAddress = address.replaceAll(" ", "+");
@@ -190,6 +197,7 @@ public class FragmentAlerts extends Fragment {
                             String pointsUrl = BASE_URL_POINTS + result.getLatitude() + "," + result.getLongitude();
                             fetchWeatherData(pointsUrl);
                             hideLoading();
+                            processedGeocodeAddresses.add(address);
                         } else {
                             // Try Census Geocoder as final fallback
                             NominatimHostManager.addDelay(() -> {
@@ -225,6 +233,7 @@ public class FragmentAlerts extends Fragment {
     }
 
     private void fetchGeocodingDataWithCensusFallback(String address) {
+        if (processedGeocodeAddresses.contains(address)) return;
         if (!isAdded()) return;
         // Encode the address for the URL
         String encodedAddress = address.replaceAll(" ", "+");
@@ -242,6 +251,7 @@ public class FragmentAlerts extends Fragment {
                             String pointsUrl = BASE_URL_POINTS + result.getLatitude() + "," + result.getLongitude();
                             fetchWeatherData(pointsUrl);
                             hideLoading();
+                            processedGeocodeAddresses.add(address);
                         } else {
                             // All hosts failed, try retry mechanism
                             tryRetryGeocoding(address);
@@ -271,6 +281,7 @@ public class FragmentAlerts extends Fragment {
     }
 
     private void tryRetryGeocoding(String address) {
+        if (processedGeocodeAddresses.contains(address)) return;
         if (NominatimHostManager.hasSuccessfulHost()) {
             Context context = isAdded() ? requireContext() : null;
             if (context == null) {

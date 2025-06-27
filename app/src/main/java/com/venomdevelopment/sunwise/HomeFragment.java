@@ -91,6 +91,7 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
     private int weatherReloadAttempts = 0;
     private static final int MAX_WEATHER_RELOADS = 8;
     private static final int RELOAD_DELAY_MS = 2000; // 2 seconds between retries
+    private final Set<String> processedGeocodeAddresses = new HashSet<>();
 
     public String getPreferenceValue() {
         SharedPreferences sp = requireActivity().getSharedPreferences(myPref, 0);
@@ -166,6 +167,20 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
             public void afterTextChanged(Editable s) {
                 // Not needed
             }
+        });
+
+        search.setOnEditorActionListener((v1, actionId, event) -> {
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE || actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH || (event != null && event.getKeyCode() == android.view.KeyEvent.KEYCODE_ENTER && event.getAction() == android.view.KeyEvent.ACTION_DOWN)) {
+                String address = search.getText().toString().trim();
+                if (!address.isEmpty()) {
+                    writeToPreference(address);
+                    setLocationAndNavigateToForecast(address);
+                } else {
+                    Toast.makeText(requireContext(), "Please enter an address", Toast.LENGTH_SHORT).show();
+                }
+                return true;
+            }
+            return false;
         });
 
         searchButton.setOnClickListener(v1 -> {
