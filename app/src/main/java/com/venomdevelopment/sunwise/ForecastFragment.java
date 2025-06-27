@@ -763,30 +763,6 @@ public class ForecastFragment extends Fragment {
                             weatherViewModel.setHighTemperature(highTemp);
                             weatherViewModel.setLowTemperature(lowTemp);
                             weatherViewModel.setDescription(desc);
-                            
-                            // Safe animation loading with error handling
-                            try {
-                                if (!dailyLottieAnimList.isEmpty()) {
-                                    String iconUrl = dailyLottieAnimList.get(0);
-                                    String animationName = extractAnimationNameFromIcon(iconUrl);
-                                    int animationResId = getResources().getIdentifier(animationName, "raw", getContext().getPackageName());
-                                    if (animationResId == 0) {
-                                        Log.w("ForecastFragment", "Missing animation for: " + animationName + ", falling back to not_available");
-                                        animationResId = getResources().getIdentifier("not_available", "raw", getContext().getPackageName());
-                                    }
-                                    if (animationResId != 0) {
-                                        animationViewForecast.setAnimation(animationResId);
-                                        animationViewForecast.loop(true);
-                                        animationViewForecast.playAnimation();
-                                    } else {
-                                        Log.e("ForecastFragment", "Even not_available animation not found, hiding animation view");
-                                        animationViewForecast.setVisibility(View.GONE);
-                                    }
-                                }
-                            } catch (Exception e) {
-                                Log.e("ForecastFragment", "Error loading animation", e);
-                                animationViewForecast.setVisibility(View.GONE);
-                            }
                         }
                         DailyForecastAdapter adapter = new DailyForecastAdapter(getContext(), dailyItems, dailyTime, dailyIcon, dailyPrecipitation, dailyHumidity, dailyLottieAnimList, dailyDescList);
                         dailyRecyclerView.setAdapter(adapter);
@@ -942,6 +918,25 @@ public class ForecastFragment extends Fragment {
                             String currentIconUrl = currentHour.optString("icon", "");
                             boolean isDaytime = currentHour.getBoolean("isDaytime");
                             setDynamicBackgroundFromIcon(currentIconUrl, isDaytime);
+
+                            // Set the top animation to match the current hour's icon
+                            if (animationViewForecast != null) {
+                                String animationName = extractAnimationNameFromIcon(currentIconUrl);
+                                int animationResId = getResources().getIdentifier(animationName, "raw", getContext().getPackageName());
+                                if (animationResId == 0) {
+                                    Log.w(TAG, "Missing animation for: " + animationName + ", falling back to not_available");
+                                    animationResId = getResources().getIdentifier("not_available", "raw", getContext().getPackageName());
+                                }
+                                if (animationResId != 0) {
+                                    animationViewForecast.setVisibility(View.VISIBLE);
+                                    animationViewForecast.setAnimation(animationResId);
+                                    animationViewForecast.loop(true);
+                                    animationViewForecast.playAnimation();
+                                } else {
+                                    Log.e(TAG, "Even not_available animation not found, hiding animation view");
+                                    animationViewForecast.setVisibility(View.GONE);
+                                }
+                            }
                         }
                         ArrayList<String> hourlyItems = new ArrayList<>();
                         ArrayList<String> hourlyTime = new ArrayList<>();

@@ -51,6 +51,9 @@ public class FragmentAlerts extends Fragment {
                              @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_alerts, container, false);
 
+        // Initialize requestQueue FIRST!
+        requestQueue = SunwiseApp.getInstance().getRequestQueue();
+
         // Set up RecyclerView
         recyclerView = view.findViewById(R.id.alertsRecyclerView);  // Adjusted the RecyclerView ID
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
@@ -70,8 +73,6 @@ public class FragmentAlerts extends Fragment {
             // Fetch coordinates using the stored address
             fetchGeocodingData(address);
         }
-
-        requestQueue = SunwiseApp.getInstance().getRequestQueue();
 
         return view;
     }

@@ -59,7 +59,7 @@ class SettingsFragment : Fragment() {
         sharedPreferences = requireContext().getSharedPreferences("SunwiseSettings", Context.MODE_PRIVATE)
         unitSpinner = rootView.findViewById(R.id.unit)
         windUnitSpinner = rootView.findViewById(R.id.windUnitSpinner)
-        notificationsSwitch = rootView.findViewById(R.id.notificationsSwitch)
+        // notificationsSwitch = rootView.findViewById(R.id.notificationsSwitch)
         darkModeSwitch = rootView.findViewById(R.id.darkModeSwitch)
         autoLocationSwitch = rootView.findViewById(R.id.autoLocationSwitch)
         precisionSwitch = rootView.findViewById(R.id.precisionSwitch)

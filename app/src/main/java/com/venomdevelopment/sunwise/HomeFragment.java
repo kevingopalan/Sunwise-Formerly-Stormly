@@ -123,6 +123,9 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_home, container, false);
+        if (!checkLocationPermission()) {
+            requestLocationPermission();
+        }
         search = v.findViewById(R.id.text_search);
         searchButton = v.findViewById(R.id.search);
         locationButton = v.findViewById(R.id.locationButton);
