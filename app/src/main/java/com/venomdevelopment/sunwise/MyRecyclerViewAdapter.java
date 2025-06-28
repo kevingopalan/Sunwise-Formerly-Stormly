@@ -78,8 +78,8 @@ public class MyRecyclerViewAdapter extends RecyclerView.Adapter<MyRecyclerViewAd
             }
             if (animationResId != 0) {
                 holder.animationView.setAnimation(animationResId);
-                holder.animationView.loop(true);
-                holder.animationView.playAnimation();
+        holder.animationView.loop(true);
+        holder.animationView.playAnimation();
             } else {
                 Log.e("MyRecyclerViewAdapter", "Even not_available animation not found, hiding animation view");
                 holder.animationView.setVisibility(View.GONE);

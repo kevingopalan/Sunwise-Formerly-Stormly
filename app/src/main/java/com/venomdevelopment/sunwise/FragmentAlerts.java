@@ -193,9 +193,9 @@ public class FragmentAlerts extends Fragment {
                         
                         if (result != null) {
                             NominatimHostManager.recordHostSuccess(geocodeUrl);
-                            // Build the points URL using the coordinates
+                        // Build the points URL using the coordinates
                             String pointsUrl = BASE_URL_POINTS + result.getLatitude() + "," + result.getLongitude();
-                            fetchWeatherData(pointsUrl);
+                        fetchWeatherData(pointsUrl);
                             hideLoading();
                             processedGeocodeAddresses.add(address);
                         } else {

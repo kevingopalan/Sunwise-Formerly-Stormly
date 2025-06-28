@@ -9,6 +9,8 @@ import android.content.res.Resources;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.SpannableString;
 import android.text.style.ForegroundColorSpan;
 import android.util.Log;
@@ -37,6 +39,10 @@ import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonArrayRequest;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
+import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.AdView;
+import com.google.android.gms.ads.LoadAdError;
+import com.google.android.gms.ads.AdListener;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -97,6 +103,9 @@ public class ForecastFragment extends Fragment {
     private SharedPreferences sunwisePrefs;
 
     private final Set<String> processedGeocodeAddresses = new HashSet<>();
+    
+    private AdView forecastAdView;
+    private Handler reloadHandler = new Handler(Looper.getMainLooper());
 
     public String getPreferenceValue() {
         SharedPreferences sp = getActivity().getSharedPreferences(myPref, 0);
@@ -129,6 +138,22 @@ public class ForecastFragment extends Fragment {
         hourlyGraphViewForecast = v.findViewById(R.id.hrGraphContent);
         dailyGraphViewForecast = v.findViewById(R.id.dayGraphContent);
         progressBar = v.findViewById(R.id.progressBar);
+
+        // Initialize AdView
+        forecastAdView = v.findViewById(R.id.forecast_ad);
+        AdRequest adRequest = new AdRequest.Builder().build();
+        forecastAdView.setAdListener(new AdListener() {
+            @Override
+            public void onAdLoaded() {
+                Log.d(TAG, "Forecast Ad loaded successfully");
+            }
+
+            @Override
+            public void onAdFailedToLoad(LoadAdError loadAdError) {
+                Log.e(TAG, "Forecast Ad failed to load: " + loadAdError.getMessage());
+            }
+        });
+        forecastAdView.loadAd(adRequest);
 
         // Initialize Volley RequestQueue
         requestQueue = SunwiseApp.getInstance().getRequestQueue();
@@ -166,20 +191,20 @@ public class ForecastFragment extends Fragment {
         weatherViewModel.getPrecipitation().observe(getViewLifecycleOwner(), precip -> {
             if (precipitationTextViewForecast != null) precipitationTextViewForecast.setText(precip);
         });
-        
+
         // Observe graph data
         weatherViewModel.getHourlyGraphData().observe(getViewLifecycleOwner(), series -> {
             if (hourlyGraphViewForecast != null && series != null) {
-                hourlyGraphViewForecast.removeAllSeries();
-                hourlyGraphViewForecast.addSeries(series);
+            hourlyGraphViewForecast.removeAllSeries();
+            hourlyGraphViewForecast.addSeries(series);
                 Log.d(TAG, "Hourly graph updated with " + series.getHighestValueX() + " data points");
             }
         });
         
         weatherViewModel.getDailyGraphDataDay().observe(getViewLifecycleOwner(), series -> {
             if (dailyGraphViewForecast != null && series != null) {
-                dailyGraphViewForecast.removeAllSeries();
-                dailyGraphViewForecast.addSeries(series);
+            dailyGraphViewForecast.removeAllSeries();
+            dailyGraphViewForecast.addSeries(series);
                 Log.d(TAG, "Daily graph updated with " + series.getHighestValueX() + " data points");
             }
         });
@@ -296,7 +321,7 @@ public class ForecastFragment extends Fragment {
             if (isAdded()) requestQueue.add(jsonObjectRequest);
         } else {
             // Use JsonArrayRequest for Nominatim
-            JsonArrayRequest jsonArrayRequest = new JsonArrayRequest
+        JsonArrayRequest jsonArrayRequest = new JsonArrayRequest
                     (Request.Method.GET, geocodeUrl, null, response -> {
                         try {
                             GeocodingResponseParser.GeocodingResult result =
@@ -325,7 +350,7 @@ public class ForecastFragment extends Fragment {
                             if (isAdded()) fetchGeocodingDataWithFallback(address);
                         });
                     }) {
-                @Override
+                    @Override
                 public java.util.Map<String, String> getHeaders() {
                     java.util.Map<String, String> headers = new java.util.HashMap<>();
                     headers.put("User-Agent", USER_AGENT);
@@ -371,7 +396,7 @@ public class ForecastFragment extends Fragment {
                             });
                         }
                     } catch (Exception e) {
-                        e.printStackTrace();
+                            e.printStackTrace();
                         // Try Census Geocoder as final fallback
                         NominatimHostManager.addDelay(() -> {
                             if (isAdded()) fetchGeocodingDataWithCensusFallback(address);
@@ -384,7 +409,7 @@ public class ForecastFragment extends Fragment {
                         if (isAdded()) fetchGeocodingDataWithCensusFallback(address);
                     });
                 }) {
-            @Override
+                    @Override
             public java.util.Map<String, String> getHeaders() {
                 java.util.Map<String, String> headers = new java.util.HashMap<>();
                 headers.put("User-Agent", USER_AGENT);
@@ -834,12 +859,12 @@ public class ForecastFragment extends Fragment {
                         // Optionally cancel further processing of this response if it's no longer relevant
                     }
                 }, new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        Log.e(TAG, "Error fetching daily forecast: " + error.getMessage());
-                        Toast.makeText(getContext(), "Error fetching daily forecast", Toast.LENGTH_SHORT).show();
-                    }
-                }) {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.e(TAG, "Error fetching daily forecast: " + error.getMessage());
+                Toast.makeText(getContext(), "Error fetching daily forecast", Toast.LENGTH_SHORT).show();
+            }
+        }) {
             @Override
             public Map<String, String> getHeaders() {
                 Map<String, String> headers = new HashMap<>();
@@ -1425,5 +1450,40 @@ public class ForecastFragment extends Fragment {
         
         // Clear conditions (default)
         return isDaytime ? R.drawable.gradient_clear_day : R.drawable.gradient_clear_night;
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        // Cancel any pending reload attempts
+        reloadHandler.removeCallbacksAndMessages(null);
+        // Pause AdView
+        if (forecastAdView != null) {
+            forecastAdView.pause();
+        }
+    }
+    
+    @Override
+    public void onPause() {
+        super.onPause();
+        if (forecastAdView != null) {
+            forecastAdView.pause();
+        }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (forecastAdView != null) {
+            forecastAdView.resume();
+        }
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if (forecastAdView != null) {
+            forecastAdView.destroy();
+        }
     }
 }

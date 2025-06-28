@@ -20,7 +20,7 @@ import android.widget.CompoundButton
 class SettingsFragment : Fragment() {
     private lateinit var unitSpinner: Spinner
     private lateinit var windUnitSpinner: Spinner
-    private lateinit var notificationsSwitch: Switch
+//    private lateinit var notificationsSwitch: Switch
     private lateinit var darkModeSwitch: Switch
     private lateinit var autoLocationSwitch: Switch
     private lateinit var precisionSwitch: Switch
@@ -119,7 +119,7 @@ class SettingsFragment : Fragment() {
             windUnitSpinner.setSelection(windUnitIndex)
         }
         // Load other preferences
-        notificationsSwitch.isChecked = sharedPreferences.getBoolean("notifications_enabled", true)
+//        notificationsSwitch.isChecked = sharedPreferences.getBoolean("notifications_enabled", true)
         autoLocationSwitch.isChecked = sharedPreferences.getBoolean("auto_location_enabled", true)
         precisionSwitch.isChecked = sharedPreferences.getBoolean("show_decimal_temp", false)
         timeFormatSwitch.isChecked = sharedPreferences.getBoolean("use_24_hour_format", false)
@@ -142,12 +142,12 @@ class SettingsFragment : Fragment() {
             }
             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
         })
-        notificationsSwitch.setOnCheckedChangeListener { _, isChecked ->
-            sharedPreferences.edit().putBoolean("notifications_enabled", isChecked).apply()
-            if (isChecked) {
-                Toast.makeText(requireContext(), "Weather notifications enabled (demo)", Toast.LENGTH_SHORT).show()
-            }
-        }
+//        notificationsSwitch.setOnCheckedChangeListener { _, isChecked ->
+//            sharedPreferences.edit().putBoolean("notifications_enabled", isChecked).apply()
+//            if (isChecked) {
+//                Toast.makeText(requireContext(), "Weather notifications enabled (demo)", Toast.LENGTH_SHORT).show()
+//            }
+//        }
         precisionSwitch.setOnCheckedChangeListener { _, isChecked ->
             sharedPreferences.edit().putBoolean("show_decimal_temp", isChecked).apply()
         }
@@ -168,7 +168,7 @@ class SettingsFragment : Fragment() {
         feedbackButton.setOnClickListener {
             val intent = Intent(Intent.ACTION_SENDTO).apply {
                 data = Uri.parse("mailto:")
-                putExtra(Intent.EXTRA_EMAIL, arrayOf("support@sunwise.app"))
+                putExtra(Intent.EXTRA_EMAIL, arrayOf("venomdevelopmentofficial@gmail.com"))
                 putExtra(Intent.EXTRA_SUBJECT, "Sunwise Feedback")
             }
             startActivity(Intent.createChooser(intent, "Send Feedback"))

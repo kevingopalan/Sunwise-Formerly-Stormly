@@ -92,6 +92,12 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
     private static final int MAX_WEATHER_RELOADS = 8;
     private static final int RELOAD_DELAY_MS = 2000; // 2 seconds between retries
     private final Set<String> processedGeocodeAddresses = new HashSet<>();
+    
+    // Location timeout tracking
+    private static final int LOCATION_TIMEOUT_MS = 5000; // 5 seconds
+    private boolean isLocationDetectionInProgress = false;
+    private long locationDetectionStartTime = 0;
+    private boolean hasLocationTimeoutOccurred = false;
 
     public String getPreferenceValue() {
         SharedPreferences sp = requireActivity().getSharedPreferences(myPref, 0);
@@ -286,8 +292,8 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
             savedLocationAdapter.notifyDataSetChanged();
         }
         
-        // Reset retry attempts and trigger weather data retry for saved locations
-        if (!savedLocationsList.isEmpty()) {
+        // Only trigger weather data retry if we have saved locations and no weather retry is already in progress
+        if (!savedLocationsList.isEmpty() && weatherReloadAttempts == 0) {
             weatherReloadAttempts = 0;
             startWeatherDataRetry();
         }
@@ -344,8 +350,22 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
     private void getCurrentLocation() {
         locationManager = (LocationManager) requireContext().getSystemService(Context.LOCATION_SERVICE);
         if (locationManager != null) {
+            // Start location detection timeout tracking
+            isLocationDetectionInProgress = true;
+            locationDetectionStartTime = System.currentTimeMillis();
+            hasLocationTimeoutOccurred = false;
+            
+            // Set up location timeout
+            reloadHandler.postDelayed(() -> {
+                if (isLocationDetectionInProgress && !hasLocationTimeoutOccurred) {
+                    Log.d(TAG, "Location detection timeout after " + LOCATION_TIMEOUT_MS + "ms, hiding spinner but continuing location detection");
+                    hasLocationTimeoutOccurred = true;
+                    hideLoading();
+                }
+            }, LOCATION_TIMEOUT_MS);
+            
             detectedLocationAdapter.notifyDataSetChanged();
-                locationManager.requestSingleUpdate(LocationManager.FUSED_PROVIDER, locationListener, null);
+            locationManager.requestSingleUpdate(LocationManager.FUSED_PROVIDER, locationListener, null);
         } else {
             detectedLocationAdapter.notifyDataSetChanged();
         }
@@ -354,6 +374,11 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
     private final android.location.LocationListener locationListener = new android.location.LocationListener() {
         @Override
         public void onLocationChanged(@NonNull Location location) {
+            // Stop location detection tracking
+            isLocationDetectionInProgress = false;
+            
+            Log.d(TAG, "Location detected after " + (System.currentTimeMillis() - locationDetectionStartTime) + "ms");
+            
             reverseGeocode(location.getLatitude(), location.getLongitude());
             locationManager.removeUpdates(this);
         }
@@ -363,6 +388,8 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
 
         @Override
         public void onProviderDisabled(@NonNull String provider) {
+            // Stop location detection tracking
+            isLocationDetectionInProgress = false;
             detectedLocationAdapter.notifyDataSetChanged();
         }
 
@@ -383,18 +410,31 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
                         detectedLocationAdapter.notifyDataSetChanged();
                         currentDetectedLocation = displayName;
                         
-                        // Reset retry attempts and trigger weather data retry for the new detected location
-                        weatherReloadAttempts = 0;
-                        startWeatherDataRetry();
+                        // Only trigger weather data retry if no weather retry is already in progress
+                        if (weatherReloadAttempts == 0) {
+                            weatherReloadAttempts = 0;
+                            startWeatherDataRetry();
+                        }
                         
-                        setLocationAndNavigateToForecast(displayName);
+                        // Don't automatically navigate - let user choose
+                        isAutoDetectTriggered = false;
                     } catch (JSONException e) {
                         Log.e(TAG, "Error parsing reverse geocoding response: " + e.getMessage());
                         detectedLocationAdapter.notifyDataSetChanged();
                         showNominatimErrorDialog("Error parsing location data.");
                     }
                 }, error -> {
-            Log.e(TAG, "Reverse geocoding error from primary host: " + error.toString());
+            String errorMessage = "Unknown error";
+            if (error != null) {
+                if (error.getMessage() != null) {
+                    errorMessage = error.getMessage();
+                } else if (error.networkResponse != null) {
+                    errorMessage = "HTTP " + error.networkResponse.statusCode;
+                } else {
+                    errorMessage = "Network error";
+                }
+            }
+            Log.e(TAG, "Reverse geocoding error from primary host: " + errorMessage);
             // Try fallback host
             reverseGeocodeWithFallback(latitude, longitude);
         }) {
@@ -422,18 +462,31 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
                         detectedLocationAdapter.notifyDataSetChanged();
                         currentDetectedLocation = displayName;
                         
-                        // Reset retry attempts and trigger weather data retry for the new detected location
-                        weatherReloadAttempts = 0;
-                        startWeatherDataRetry();
+                        // Only trigger weather data retry if no weather retry is already in progress
+                        if (weatherReloadAttempts == 0) {
+                            weatherReloadAttempts = 0;
+                            startWeatherDataRetry();
+                        }
                         
-                        setLocationAndNavigateToForecast(displayName);
+                        // Don't automatically navigate - let user choose
+                        isAutoDetectTriggered = false;
                     } catch (JSONException e) {
                         Log.e(TAG, "Error parsing reverse geocoding response from fallback: " + e.getMessage());
                         detectedLocationAdapter.notifyDataSetChanged();
                         showNominatimErrorDialog("Error parsing location data.");
                     }
                 }, error -> {
-            Log.e(TAG, "Reverse geocoding error from fallback host: " + error.toString());
+            String errorMessage = "Unknown error";
+            if (error != null) {
+                if (error.getMessage() != null) {
+                    errorMessage = error.getMessage();
+                } else if (error.networkResponse != null) {
+                    errorMessage = "HTTP " + error.networkResponse.statusCode;
+                } else {
+                    errorMessage = "Network error";
+                }
+            }
+            Log.e(TAG, "Reverse geocoding error from fallback host: " + errorMessage);
             detectedLocationAdapter.notifyDataSetChanged();
             showNominatimErrorDialog("Could not connect to location service from any available host.");
         }) {
@@ -486,6 +539,10 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
 
     private void setLocationAndNavigateToForecast(String location) {
         if (!isAdded() || getActivity() == null) return;
+        
+        // Cancel all weather fetching immediately when navigating to ForecastFragment
+        cancelWeatherFetching();
+        
         if (!isAutoDetectTriggered) {
             // Only navigate if not triggered by auto-detect
             if (navigateToForecastListener != null) {
@@ -499,6 +556,10 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
     public void onLocationClick(String location) {
         // Save the selected location to SharedPreferences
         writeToPreference(location);
+        
+        // Cancel all weather fetching immediately when navigating to ForecastFragment
+        cancelWeatherFetching();
+        
         setLocationAndNavigateToForecast(location);
     }
 
@@ -546,14 +607,35 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
     private void attemptWeatherDataFetch() {
         if (!isAdded() || getActivity() == null) return;
         
+        // Stop if weather fetching has been cancelled
+        if (weatherReloadAttempts >= MAX_WEATHER_RELOADS) {
+            Log.d(TAG, "Weather fetching cancelled, stopping attempts");
+            return;
+        }
+        
         Log.d(TAG, "Weather data fetch attempt " + (weatherReloadAttempts + 1) + " of " + MAX_WEATHER_RELOADS);
         
-        // Fetch weather for all saved and detected locations
+        // Get current weather data to check what we already have
+        Map<String, WeatherViewModel.WeatherSummary> currentMap = weatherViewModel.getLocationWeatherMap().getValue();
+        
+        // Fetch weather only for locations that don't already have weather data
         List<String> allLocations = new ArrayList<>();
         allLocations.addAll(savedLocationsList);
         allLocations.addAll(detectedLocationList);
         
+        List<String> locationsNeedingWeather = new ArrayList<>();
+        
+        for (String location : allLocations) {
+            if (currentMap == null || currentMap.get(location) == null || 
+                currentMap.get(location).temperature == null || 
+                currentMap.get(location).temperature.isEmpty() || 
+                currentMap.get(location).temperature.equals("--")) {
+                locationsNeedingWeather.add(location);
+            }
+        }
+        
         Log.d(TAG, "Current locations - Saved: " + savedLocationsList.size() + ", Detected: " + detectedLocationList.size());
+        Log.d(TAG, "Locations needing weather: " + locationsNeedingWeather.size() + " out of " + allLocations.size());
         
         if (allLocations.isEmpty()) {
             // No locations to fetch, but don't hide loading yet
@@ -564,26 +646,42 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
                 Log.d(TAG, "Scheduling next retry in " + RELOAD_DELAY_MS + "ms");
                 reloadHandler.postDelayed(this::attemptWeatherDataFetch, RELOAD_DELAY_MS);
             } else {
-                Log.d(TAG, "Max weather reload attempts reached with no locations, hiding loading spinner");
-                hideLoading();
+                // Only hide loading if location detection has timed out or completed
+                if (hasLocationTimeoutOccurred || !isLocationDetectionInProgress) {
+                    Log.d(TAG, "Max weather reload attempts reached with no locations, hiding loading spinner");
+                    hideLoading();
+                } else {
+                    Log.d(TAG, "Max weather reload attempts reached but location detection still in progress, keeping spinner");
+                }
             }
             return;
         }
         
-        Log.d(TAG, "Fetching weather for locations: " + allLocations);
-        weatherViewModel.fetchWeatherForLocations(requireContext(), allLocations);
+        // Only fetch weather for locations that need it
+        if (!locationsNeedingWeather.isEmpty()) {
+            Log.d(TAG, "Fetching weather for locations that need it: " + locationsNeedingWeather);
+            weatherViewModel.fetchWeatherForLocations(requireContext(), locationsNeedingWeather);
+        } else {
+            Log.d(TAG, "All locations already have weather data, no need to fetch");
+        }
         
         // Check if we have data after a longer delay to give API time to respond
         reloadHandler.postDelayed(() -> {
             if (!isAdded() || getActivity() == null) return;
             
-            Map<String, WeatherViewModel.WeatherSummary> currentMap = weatherViewModel.getLocationWeatherMap().getValue();
+            // Stop if weather fetching has been cancelled
+            if (weatherReloadAttempts >= MAX_WEATHER_RELOADS) {
+                Log.d(TAG, "Weather fetching cancelled in delayed callback, stopping");
+                return;
+            }
+            
+            Map<String, WeatherViewModel.WeatherSummary> updatedMap = weatherViewModel.getLocationWeatherMap().getValue();
             int locationsWithData = 0;
             
-            if (currentMap != null) {
-                Log.d(TAG, "Current weather map has " + currentMap.size() + " entries");
+            if (updatedMap != null) {
+                Log.d(TAG, "Current weather map has " + updatedMap.size() + " entries");
                 for (String location : allLocations) {
-                    WeatherViewModel.WeatherSummary summary = currentMap.get(location);
+                    WeatherViewModel.WeatherSummary summary = updatedMap.get(location);
                     if (summary != null && summary.temperature != null && !summary.temperature.isEmpty() && !summary.temperature.equals("--")) {
                         locationsWithData++;
                         Log.d(TAG, "Location " + location + " has temperature: " + summary.temperature);
@@ -607,9 +705,15 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
                     Log.d(TAG, "Not all weather data yet, retrying in " + RELOAD_DELAY_MS + "ms (attempt " + weatherReloadAttempts + ")");
                     reloadHandler.postDelayed(this::attemptWeatherDataFetch, RELOAD_DELAY_MS);
                 } else {
-                    Log.d(TAG, "Max weather reload attempts reached, hiding loading spinner");
-                    hideLoading();
-                    updateAdaptersWithWeatherData();
+                    // Only hide loading if location detection has timed out or completed
+                    if (hasLocationTimeoutOccurred || !isLocationDetectionInProgress) {
+                        Log.d(TAG, "Max weather reload attempts reached, hiding loading spinner");
+                        hideLoading();
+                        updateAdaptersWithWeatherData();
+                    } else {
+                        Log.d(TAG, "Max weather reload attempts reached but location detection still in progress, keeping spinner");
+                        updateAdaptersWithWeatherData();
+                    }
                 }
             }
         }, 3000); // Check after 3 seconds to give API more time to respond
@@ -630,7 +734,27 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        // Cancel any pending reload attempts
+        // Cancel any pending reload attempts and weather fetching
+        cancelWeatherFetching();
+    }
+
+    private void cancelWeatherFetching() {
+        // Cancel all pending reload attempts
         reloadHandler.removeCallbacksAndMessages(null);
+        
+        // Reset retry counters to stop further attempts
+        weatherReloadAttempts = MAX_WEATHER_RELOADS;
+        geocodeReloadAttempts = MAX_GEOCODE_RELOADS;
+        
+        // Reset location detection tracking
+        isLocationDetectionInProgress = false;
+        hasLocationTimeoutOccurred = false;
+        
+        // Cancel any pending Volley requests for this fragment
+        if (requestQueue != null) {
+            requestQueue.cancelAll(TAG);
+        }
+        
+        Log.d(TAG, "Weather fetching cancelled - navigating to ForecastFragment");
     }
 }

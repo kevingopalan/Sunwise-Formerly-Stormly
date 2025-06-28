@@ -18,11 +18,11 @@
             android:orientation="vertical"
             android:padding="20dp">
 
-            <TextView
+        <TextView
                 android:id="@+id/settingsText"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Settings"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Settings"
                 android:layout_marginTop="40dp"
                 android:fontFamily="@font/montsemibold"
                 android:textColor="?attr/colorOnBackground"
@@ -35,15 +35,15 @@
                 android:layout_height="wrap_content"
                 android:text="Units"
                 android:layout_marginTop="40dp"
-                android:fontFamily="@font/montsemibold"
+            android:fontFamily="@font/montsemibold"
                 android:textColor="?attr/colorOnBackground"
                 android:textSize="20dp" />
 
-            <Spinner
-                android:id="@+id/unit"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@drawable/main_background"
+        <Spinner
+            android:id="@+id/unit"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/main_background"
                 android:layout_marginTop="10dp"
                 android:padding="20dp"
                 android:spinnerMode="dropdown" />
@@ -255,7 +255,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
                 android:background="@drawable/main_background"
-                android:padding="20dp"
+            android:padding="20dp"
                 android:orientation="vertical">
 
                 <TextView
@@ -305,6 +305,6 @@
             </LinearLayout>
 
         </LinearLayout>
-    </androidx.core.widget.NestedScrollView>
+</androidx.core.widget.NestedScrollView>
 
 </FrameLayout> 

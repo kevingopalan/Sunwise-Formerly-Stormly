@@ -9,6 +9,7 @@ import android.view.MenuItem;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.View;
+import android.widget.FrameLayout;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -23,6 +24,13 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
+import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.AdSize;
+import com.google.android.gms.ads.AdView;
+import com.google.android.gms.ads.LoadAdError;
+import com.google.android.gms.ads.MobileAds;
+import com.google.android.gms.ads.AdListener;
+import com.google.android.gms.ads.admanager.AdManagerAdRequest;
 import com.google.android.material.navigation.NavigationView;
 
 public class MainActivity extends AppCompatActivity
@@ -33,16 +41,24 @@ public class MainActivity extends AppCompatActivity
     private ActionBarDrawerToggle drawerToggle;
     private NavigationView navigationView;
     private FragmentManager fragmentManager;
+    private AdView adView;
     private String currentDrawerFragmentTag = "home"; // Track current drawer fragment
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        
         // Apply theme before setting content view
         applyTheme();
-        
+
         setContentView(R.layout.activity_main);
+        
+        // Initialize MobileAds
+        MobileAds.initialize(this, initializationStatus -> {
+            // Initialization completed
+        });
+        
+        // Setup AdView
+        setupAdView();
         
         // Setup toolbar
         Toolbar toolbar = findViewById(R.id.toolbar);
@@ -66,7 +82,81 @@ public class MainActivity extends AppCompatActivity
         if (savedInstanceState == null) {
             loadFragment(new HomeFragment(), "home");
             navigationView.setCheckedItem(R.id.nav_home);
+        } else {
+            // Restore the current drawer fragment if it exists
+            Fragment currentFragment = fragmentManager.findFragmentById(R.id.fragment_container);
+            if (currentFragment == null) {
+                // No fragment exists, restore the home fragment
+                loadFragment(new HomeFragment(), "home");
+                navigationView.setCheckedItem(R.id.nav_home);
+            } else {
+                // Fragment exists, update the navigation selection based on the fragment tag
+                String fragmentTag = currentFragment.getTag();
+                if (fragmentTag != null) {
+                    currentDrawerFragmentTag = fragmentTag;
+                    switch (fragmentTag) {
+                        case "home":
+                            navigationView.setCheckedItem(R.id.nav_home);
+                            break;
+                        case "alerts":
+                            navigationView.setCheckedItem(R.id.nav_alerts);
+                            break;
+                        case "settings":
+                            navigationView.setCheckedItem(R.id.nav_settings);
+                            break;
+                        case "snow_day":
+                            navigationView.setCheckedItem(R.id.nav_snow_day);
+                            break;
+                        default:
+                            navigationView.setCheckedItem(R.id.nav_home);
+                            break;
+                    }
+                }
+            }
         }
+    }
+
+    private void setupAdView() {
+        adView = findViewById(R.id.banner_ad_view);
+        AdRequest adRequest = new AdRequest.Builder().build();
+        
+        adView.setAdListener(new AdListener() {
+            @Override
+            public void onAdLoaded() {
+                // Ad loaded successfully
+            }
+
+            @Override
+            public void onAdFailedToLoad(LoadAdError adError) {
+                // Ad failed to load
+            }
+        });
+        
+        adView.loadAd(adRequest);
+    }
+
+    @Override
+    protected void onPause() {
+        if (adView != null) {
+            adView.pause();
+        }
+        super.onPause();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (adView != null) {
+            adView.resume();
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (adView != null) {
+            adView.destroy();
+        }
+        super.onDestroy();
     }
 
     @Override
@@ -76,6 +166,36 @@ public class MainActivity extends AppCompatActivity
         } else if (fragmentManager.getBackStackEntryCount() > 0) {
             // If we're in a forecast fragment, go back to the drawer fragment
             fragmentManager.popBackStack();
+            
+            // Recreate the appropriate drawer fragment since it was destroyed
+            Fragment fragment = null;
+            int navItemId = R.id.nav_home; // Default to home
+            
+            switch (currentDrawerFragmentTag) {
+                case "home":
+                    fragment = new HomeFragment();
+                    navItemId = R.id.nav_home;
+                    break;
+                case "alerts":
+                    fragment = new FragmentAlerts();
+                    navItemId = R.id.nav_alerts;
+                    break;
+                case "settings":
+                    fragment = new SettingsFragment();
+                    navItemId = R.id.nav_settings;
+                    break;
+                case "snow_day":
+                    fragment = new SnowDayFragment();
+                    navItemId = R.id.nav_snow_day;
+                    break;
+            }
+            
+            if (fragment != null) {
+                FragmentTransaction transaction = fragmentManager.beginTransaction();
+                transaction.add(R.id.fragment_container, fragment, currentDrawerFragmentTag);
+                transaction.commit();
+                navigationView.setCheckedItem(navItemId);
+            }
         } else {
             super.onBackPressed();
         }
@@ -102,9 +222,22 @@ public class MainActivity extends AppCompatActivity
         }
         
         if (fragment != null) {
-            // Clear back stack when navigating from drawer
+            // Clear back stack and remove any existing fragments (including ForecastFragment)
             fragmentManager.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE);
-            loadFragment(fragment, tag);
+            
+            // Remove any existing fragments in the container
+            FragmentTransaction transaction = fragmentManager.beginTransaction();
+            Fragment currentFragment = fragmentManager.findFragmentById(R.id.fragment_container);
+            if (currentFragment != null) {
+                transaction.remove(currentFragment);
+            }
+            
+            // Add the new fragment
+            transaction.add(R.id.fragment_container, fragment, tag);
+            transaction.commit();
+            
+            // Track the current drawer fragment
+            currentDrawerFragmentTag = tag;
             navigationView.setCheckedItem(id);
         }
         
@@ -115,24 +248,19 @@ public class MainActivity extends AppCompatActivity
     private void loadFragment(Fragment fragment, String tag) {
         FragmentTransaction transaction = fragmentManager.beginTransaction();
         
-        // Hide all existing fragments
+        // Remove all existing fragments instead of hiding them
         Fragment homeFragment = fragmentManager.findFragmentByTag("home");
         Fragment alertsFragment = fragmentManager.findFragmentByTag("alerts");
         Fragment settingsFragment = fragmentManager.findFragmentByTag("settings");
         Fragment snowFragment = fragmentManager.findFragmentByTag("snow_day");
         
-        if (homeFragment != null) transaction.hide(homeFragment);
-        if (alertsFragment != null) transaction.hide(alertsFragment);
-        if (settingsFragment != null) transaction.hide(settingsFragment);
-        if (snowFragment != null) transaction.hide(snowFragment);
+        if (homeFragment != null) transaction.remove(homeFragment);
+        if (alertsFragment != null) transaction.remove(alertsFragment);
+        if (settingsFragment != null) transaction.remove(settingsFragment);
+        if (snowFragment != null) transaction.remove(snowFragment);
         
-        // Show or add the target fragment
-        Fragment existingFragment = fragmentManager.findFragmentByTag(tag);
-        if (existingFragment != null) {
-            transaction.show(existingFragment);
-        } else {
-            transaction.add(R.id.fragment_container, fragment, tag);
-        }
+        // Add the new fragment
+        transaction.add(R.id.fragment_container, fragment, tag);
         
         // Track the current drawer fragment
         currentDrawerFragmentTag = tag;
@@ -148,7 +276,14 @@ public class MainActivity extends AppCompatActivity
         forecastFragment.setArguments(args);
         
         FragmentTransaction transaction = fragmentManager.beginTransaction();
-        transaction.replace(R.id.fragment_container, forecastFragment, "forecast");
+        
+        // Remove the current drawer fragment to free up memory
+        Fragment currentFragment = fragmentManager.findFragmentByTag(currentDrawerFragmentTag);
+        if (currentFragment != null) {
+            transaction.remove(currentFragment);
+        }
+        
+        transaction.add(R.id.fragment_container, forecastFragment, "forecast");
         transaction.addToBackStack("forecast");
         transaction.commit();
     }

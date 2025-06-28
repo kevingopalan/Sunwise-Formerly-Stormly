@@ -289,13 +289,22 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/hourlyRecyclerView"
                 tools:ignore="UnusedAttribute" />
+
+            <com.google.android.gms.ads.AdView
+                android:id="@+id/forecast_ad"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                app:adSize="MEDIUM_RECTANGLE"
+                app:adUnitId="@string/ad_unit_forecast_fragment"
+                app:layout_constraintTop_toBottomOf="@id/dailyRecyclerView" />
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="200dp"
                 android:id="@+id/hourlygraph"
                 android:orientation="horizontal"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/dailyRecyclerView"
+                app:layout_constraintTop_toBottomOf="@id/forecast_ad"
                 android:layout_margin="20dp"
                 android:padding="20dp"
                 android:background="@drawable/main_background">
