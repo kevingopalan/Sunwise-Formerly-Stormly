@@ -70,6 +70,9 @@ import android.graphics.Paint;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import androidx.core.content.ContextCompat;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import java.time.LocalDate;
+import android.util.TypedValue;
 
 public class ForecastFragment extends Fragment {
 
@@ -106,11 +109,10 @@ public class ForecastFragment extends Fragment {
     
     private AdView forecastAdView;
     private Handler reloadHandler = new Handler(Looper.getMainLooper());
+    private FloatingActionButton reloadFab;
 
     public String getPreferenceValue() {
-        SharedPreferences sp = getActivity().getSharedPreferences(myPref, 0);
-        String str = sp.getString("address", "");
-        return str;
+        return sunwisePrefs.getString("address", "");
     }
 
     @Nullable
@@ -118,131 +120,161 @@ public class ForecastFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
-        View v = inflater.inflate(R.layout.fragment_forecast, container, false);
-        currentTempTextForecast = v.findViewById(R.id.currentTempText); // Changed ID in layout
-        highTempTextForecast = v.findViewById(R.id.highTempText);
-        lowTempTextForecast = v.findViewById(R.id.lowTempText);
-        descTextForecast = v.findViewById(R.id.text_desc);
-        locationDisplay = v.findViewById(R.id.locationDisplay);
-        saveLocationButton = v.findViewById(R.id.saveLocationButton);
-        animationViewForecast = v.findViewById(R.id.animation_view);
-        dailyRecyclerView = v.findViewById(R.id.dailyRecyclerView);
-        dailyRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-        dailyRecyclerView.setNestedScrollingEnabled(true);
-        horizontalHourlyRecyclerView = v.findViewById(R.id.hourlyRecyclerView);
-        LinearLayoutManager horizontalLayoutManager = new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false);
-        horizontalHourlyRecyclerView.setLayoutManager(horizontalLayoutManager);
-        humidityTextViewForecast = v.findViewById(R.id.humidity);
-        windTextViewForecast = v.findViewById(R.id.wind);
-        precipitationTextViewForecast = v.findViewById(R.id.precipitation);
-        hourlyGraphViewForecast = v.findViewById(R.id.hrGraphContent);
-        dailyGraphViewForecast = v.findViewById(R.id.dayGraphContent);
-        progressBar = v.findViewById(R.id.progressBar);
+        View view = inflater.inflate(R.layout.fragment_forecast, container, false);
+        
+        // Initialize views
+        animationViewForecast = view.findViewById(R.id.animation_view);
+        currentTempTextForecast = view.findViewById(R.id.currentTempText);
+        highTempTextForecast = view.findViewById(R.id.highTempText);
+        lowTempTextForecast = view.findViewById(R.id.lowTempText);
+        descTextForecast = view.findViewById(R.id.text_desc);
+        humidityTextViewForecast = view.findViewById(R.id.humidity);
+        windTextViewForecast = view.findViewById(R.id.wind);
+        precipitationTextViewForecast = view.findViewById(R.id.precipitation);
+        locationDisplay = view.findViewById(R.id.locationDisplay);
+        saveLocationButton = view.findViewById(R.id.saveLocationButton);
+        dailyRecyclerView = view.findViewById(R.id.dailyRecyclerView);
+        horizontalHourlyRecyclerView = view.findViewById(R.id.hourlyRecyclerView);
+        hourlyGraphViewForecast = view.findViewById(R.id.hrGraphContent);
+        dailyGraphViewForecast = view.findViewById(R.id.dayGraphContent);
+        progressBar = view.findViewById(R.id.progressBar);
+        forecastAdView = view.findViewById(R.id.forecast_ad);
+        reloadFab = view.findViewById(R.id.reloadFab);
 
-        // Initialize AdView
-        forecastAdView = v.findViewById(R.id.forecast_ad);
-        AdRequest adRequest = new AdRequest.Builder().build();
-        forecastAdView.setAdListener(new AdListener() {
-            @Override
-            public void onAdLoaded() {
-                Log.d(TAG, "Forecast Ad loaded successfully");
-            }
-
-            @Override
-            public void onAdFailedToLoad(LoadAdError loadAdError) {
-                Log.e(TAG, "Forecast Ad failed to load: " + loadAdError.getMessage());
-            }
-        });
-        forecastAdView.loadAd(adRequest);
+        // Initialize ViewModel
+        weatherViewModel = new ViewModelProvider(requireActivity()).get(WeatherViewModel.class);
 
         // Initialize Volley RequestQueue
         requestQueue = SunwiseApp.getInstance().getRequestQueue();
 
-        // Get the Shared ViewModel
-        weatherViewModel = new ViewModelProvider(requireActivity()).get(WeatherViewModel.class);
+        // Load preferences
+        sunwisePrefs = requireActivity().getSharedPreferences("SunwisePrefs", Context.MODE_PRIVATE);
+        tempUnit = sunwisePrefs.getString("tempUnit", "us");
+        windUnit = sunwisePrefs.getString("windUnit", "mph");
+        showDecimalTemp = sunwisePrefs.getBoolean("showDecimalTemp", false);
+        use24HourFormat = sunwisePrefs.getBoolean("use24HourFormat", false);
 
-        String location = null;
-        if (getArguments() != null && getArguments().containsKey("location")) {
-            location = getArguments().getString("location");
-        }
-        if (location != null && !location.isEmpty()) {
-            weatherViewModel.fetchWeatherForLocation(requireContext(), location);
-        }
+        // Setup RecyclerViews
+        dailyRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+        horizontalHourlyRecyclerView.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
 
-        // Observe LiveData and update UI as before
-        weatherViewModel.getCurrentTemperature().observe(getViewLifecycleOwner(), temp -> {
-            if (currentTempTextForecast != null) currentTempTextForecast.setText(temp);
-        });
-        weatherViewModel.getHighTemperature().observe(getViewLifecycleOwner(), high -> {
-            if (highTempTextForecast != null) highTempTextForecast.setText(high);
-        });
-        weatherViewModel.getLowTemperature().observe(getViewLifecycleOwner(), low -> {
-            if (lowTempTextForecast != null) lowTempTextForecast.setText(low);
-        });
-        weatherViewModel.getDescription().observe(getViewLifecycleOwner(), desc -> {
-            if (descTextForecast != null) descTextForecast.setText(desc);
-        });
-        weatherViewModel.getHumidity().observe(getViewLifecycleOwner(), humidity -> {
-            if (humidityTextViewForecast != null) humidityTextViewForecast.setText(humidity);
-        });
-        weatherViewModel.getWind().observe(getViewLifecycleOwner(), wind -> {
-            if (windTextViewForecast != null) windTextViewForecast.setText(wind);
-        });
-        weatherViewModel.getPrecipitation().observe(getViewLifecycleOwner(), precip -> {
-            if (precipitationTextViewForecast != null) precipitationTextViewForecast.setText(precip);
-        });
-
-        // Observe graph data
-        weatherViewModel.getHourlyGraphData().observe(getViewLifecycleOwner(), series -> {
-            if (hourlyGraphViewForecast != null && series != null) {
-            hourlyGraphViewForecast.removeAllSeries();
-            hourlyGraphViewForecast.addSeries(series);
-                Log.d(TAG, "Hourly graph updated with " + series.getHighestValueX() + " data points");
+        // Setup AdView
+        AdRequest adRequest = new AdRequest.Builder().build();
+        forecastAdView.loadAd(adRequest);
+        forecastAdView.setAdListener(new AdListener() {
+            @Override
+            public void onAdLoaded() {
+                Log.d(TAG, "Forecast fragment ad loaded successfully");
             }
-        });
-        
-        weatherViewModel.getDailyGraphDataDay().observe(getViewLifecycleOwner(), series -> {
-            if (dailyGraphViewForecast != null && series != null) {
-            dailyGraphViewForecast.removeAllSeries();
-            dailyGraphViewForecast.addSeries(series);
-                Log.d(TAG, "Daily graph updated with " + series.getHighestValueX() + " data points");
+
+            @Override
+            public void onAdFailedToLoad(LoadAdError loadAdError) {
+                Log.e(TAG, "Forecast fragment ad failed to load: " + loadAdError.getMessage());
             }
         });
 
-        sunwisePrefs = requireContext().getSharedPreferences("SunwiseSettings", Context.MODE_PRIVATE);
-        tempUnit = sunwisePrefs.getString("unit", "us");
-        windUnit = sunwisePrefs.getString("wind_unit", "mph");
-        showDecimalTemp = sunwisePrefs.getBoolean("show_decimal_temp", false);
-        use24HourFormat = sunwisePrefs.getBoolean("use_24_hour_format", false);
+        // Setup reload FAB
+        reloadFab.setOnClickListener(v -> {
+            reloadFab.setEnabled(false);
+            reloadFab.animate().rotationBy(360f).setDuration(1000).withEndAction(() -> {
+                reloadFab.setEnabled(true);
+                reloadFab.setRotation(0f);
+            }).start();
+            
+            // Reload the entire fragment
+            if (getParentFragmentManager() != null) {
+                // Get current arguments
+                Bundle currentArgs = getArguments();
+                // Replace the current fragment with a new instance
+                ForecastFragment newFragment = new ForecastFragment();
+                if (currentArgs != null) {
+                    newFragment.setArguments(currentArgs);
+                }
+                
+                getParentFragmentManager().beginTransaction()
+                    .replace(R.id.fragment_container, newFragment)
+                    .addToBackStack(null)
+                    .commit();
+            }
+        });
 
+        // Setup save location button
         saveLocationButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                String currentLocation = locationDisplay.getText().toString().trim();
-                if (!currentLocation.isEmpty() && !currentLocation.equals("Location")) {
-                    saveLocationToList(currentLocation);
-                } else {
-                    Toast.makeText(getContext(), "No location to save", Toast.LENGTH_SHORT).show();
+                String location = locationDisplay.getText().toString();
+                if (!location.isEmpty() && !location.equals("Location")) {
+                    saveLocationToList(location);
+                    Toast.makeText(getContext(), "Location saved!", Toast.LENGTH_SHORT).show();
                 }
             }
         });
-        locationDisplay.setText(getPreferenceValue());
-        // Remove automatic weather fetch - let user manually trigger it
-        
-        // Get location from Bundle arguments first, fall back to SharedPreferences
-        String locationToFetch = null;
-        if (getArguments() != null && getArguments().containsKey("location")) {
-            locationToFetch = getArguments().getString("location");
-            locationDisplay.setText(locationToFetch);
+
+        // Observe ViewModel data
+        weatherViewModel.getCurrentTemperature().observe(getViewLifecycleOwner(), temp -> {
+            if (currentTempTextForecast != null) {
+                currentTempTextForecast.setText(temp);
+            }
+        });
+
+        weatherViewModel.getHighTemperature().observe(getViewLifecycleOwner(), temp -> {
+            if (highTempTextForecast != null) {
+                highTempTextForecast.setText(temp);
+            }
+        });
+
+        weatherViewModel.getLowTemperature().observe(getViewLifecycleOwner(), temp -> {
+            if (lowTempTextForecast != null) {
+                lowTempTextForecast.setText(temp);
+            }
+        });
+
+        weatherViewModel.getDescription().observe(getViewLifecycleOwner(), desc -> {
+            if (descTextForecast != null) {
+                descTextForecast.setText(desc);
+            }
+        });
+
+        weatherViewModel.getHumidity().observe(getViewLifecycleOwner(), humidity -> {
+            if (humidityTextViewForecast != null) {
+                humidityTextViewForecast.setText(humidity);
+            }
+        });
+
+        weatherViewModel.getWind().observe(getViewLifecycleOwner(), wind -> {
+            if (windTextViewForecast != null) {
+                windTextViewForecast.setText(wind);
+            }
+        });
+
+        weatherViewModel.getPrecipitation().observe(getViewLifecycleOwner(), precip -> {
+            if (precipitationTextViewForecast != null) {
+                precipitationTextViewForecast.setText(precip);
+            }
+        });
+
+        // Setup graphs with proper styling and fonts
+        setupGraphs();
+
+        // Get location from arguments or preferences
+        Bundle args = getArguments();
+        if (args != null && args.containsKey("location")) {
+            String location = args.getString("location");
+            updateLocationDisplay(location);
+            fetchGeocodingData(location);
         } else {
-            locationToFetch = getPreferenceValue();
-        }
-        
-        // Fetch weather data for the location
-        if (!locationToFetch.isEmpty()) {
-            fetchGeocodingData(locationToFetch);
+            String location = getPreferenceValue();
+            if (!location.isEmpty()) {
+                updateLocationDisplay(location);
+                fetchGeocodingData(location);
+            }
         }
 
+        return view;
+    }
+
+    private void setupGraphs() {
+        // Setup graphs with proper styling and fonts
         hourlyGraphViewForecast.getGridLabelRenderer().setGridStyle(GridLabelRenderer.GridStyle.NONE);
         dailyGraphViewForecast.getGridLabelRenderer().setGridStyle(GridLabelRenderer.GridStyle.NONE);
         hourlyGraphViewForecast.getViewport().setXAxisBoundsManual(true);
@@ -257,7 +289,44 @@ public class ForecastFragment extends Fragment {
         setTitleTypeface(getContext(), hourlyGraphViewForecast, R.font.montsemibold);
         setTitleTypeface(getContext(), dailyGraphViewForecast, R.font.montsemibold);
 
-        return v;
+        // Observe graph data
+        weatherViewModel.getHourlyGraphData().observe(getViewLifecycleOwner(), series -> {
+            if (series != null && hourlyGraphViewForecast != null) {
+                hourlyGraphViewForecast.removeAllSeries();
+                int colorOnSurface = ContextCompat.getColor(requireContext(), android.R.color.white); // fallback
+                if (getContext() != null) {
+                    TypedValue typedValue = new TypedValue();
+                    getContext().getTheme().resolveAttribute(com.google.android.material.R.attr.colorOnSurface, typedValue, true);
+                    colorOnSurface = typedValue.data;
+                }
+                series.setColor(colorOnSurface);
+                series.setDrawDataPoints(true);
+                series.setDataPointsRadius(8);
+                series.setThickness(3);
+                hourlyGraphViewForecast.addSeries(series);
+            }
+        });
+
+        weatherViewModel.getDailyGraphDataDay().observe(getViewLifecycleOwner(), daySeries -> {
+            if (daySeries != null && dailyGraphViewForecast != null) {
+                dailyGraphViewForecast.removeAllSeries();
+                daySeries.setColor(getResources().getColor(android.R.color.holo_red_light));
+                daySeries.setDrawDataPoints(true);
+                daySeries.setDataPointsRadius(8);
+                daySeries.setThickness(3);
+                dailyGraphViewForecast.addSeries(daySeries);
+                
+                weatherViewModel.getDailyGraphDataNight().observe(getViewLifecycleOwner(), nightSeries -> {
+                    if (nightSeries != null) {
+                        nightSeries.setColor(getResources().getColor(android.R.color.holo_blue_light));
+                        nightSeries.setDrawDataPoints(true);
+                        nightSeries.setDataPointsRadius(8);
+                        nightSeries.setThickness(3);
+                        dailyGraphViewForecast.addSeries(nightSeries);
+                    }
+                });
+            }
+        });
     }
 
     private void fetchGeocodingData(String address) {
@@ -599,16 +668,20 @@ public class ForecastFragment extends Fragment {
                         ArrayList<String> dailyLottieAnimList = new ArrayList<>();
                         ArrayList<String> dailyDescList = new ArrayList<>();
                         Map<String, DailyForecastPair> forecastMap = new HashMap<>();
+                        
+                        // First pass: collect all data by period name
                         for (int i = 0; i < periods.length(); i++) {
                             JSONObject current = periods.getJSONObject(i);
                             String name = current.optString("name");
                             boolean isDaytime = current.getBoolean("isDaytime");
-                            String dayOfWeek = name.split(" ")[0];
+                            
+                            // Use the full name as the key, not just the first word
+                            String periodKey = name;
                             DailyForecastPair pair;
-                            if (!forecastMap.containsKey(dayOfWeek)) {
-                                forecastMap.put(dayOfWeek, new DailyForecastPair());
+                            if (!forecastMap.containsKey(periodKey)) {
+                                forecastMap.put(periodKey, new DailyForecastPair());
                             }
-                            pair = forecastMap.get(dayOfWeek);
+                            pair = forecastMap.get(periodKey);
                             double tempVal = current.optDouble("temperature", Double.NaN);
                             String temperature = Double.isNaN(tempVal) ? "--" : formatTemperature(tempVal, tempUnit, showDecimalTemp);
                             String description = current.optString("shortForecast");
@@ -653,13 +726,18 @@ public class ForecastFragment extends Fragment {
                                 pair.nightHumidity = humidityValue;
                             }
                         }
-                        Set<String> processedDays = new HashSet<>();
+                        
+                        // Second pass: process and consolidate data
+                        Set<String> processedPeriods = new HashSet<>();
+                        LocalDate today = LocalDate.now();
+                        
                         for (int i = 0; i < periods.length(); i++) {
                             JSONObject current = periods.getJSONObject(i);
                             String name = current.optString("name");
-                            String dayOfWeek = name.split(" ")[0];
-                            DailyForecastPair pair = forecastMap.get(dayOfWeek);
-                            if (pair != null) {
+                            String periodKey = name;
+                            DailyForecastPair pair = forecastMap.get(periodKey);
+                            
+                            if (pair != null && !processedPeriods.contains(periodKey)) {
                                 SpannableString coloredTemperature = new SpannableString("");
                                 String descriptionText = "";
                                 String precipitationText = "";
@@ -667,48 +745,18 @@ public class ForecastFragment extends Fragment {
                                 String primaryIcon = "";
                                 String primaryLottieAnim = "";
                                 boolean isDaytime = current.getBoolean("isDaytime");
-                                String prefix = isDaytime ? "_day" : "_night";
                                 String description = current.optString("shortForecast");
                                 String icon;
                                 String lottieAnim;
-                                // OLD DESCRIPTION-BASED MAPPING - COMMENTED OUT
-                                /*
-                                if (description.toLowerCase().contains("snow")) {
-                                    icon = "snow";
-                                    lottieAnim = "snow";
-                                } else if (description.toLowerCase().contains("rain") || description.toLowerCase().contains("showers")) {
-                                    icon = "lrain";
-                                    lottieAnim = "rain";
-                                } else if (description.toLowerCase().contains("partly")) {
-                                    icon = "pcloudy";
-                                    lottieAnim = "partly_cloudy" + prefix;
-                                } else if (description.toLowerCase().contains("sun")) {
-                                    icon = "sun";
-                                    lottieAnim = "clear" + prefix;
-                                } else if (description.toLowerCase().contains("clear")) {
-                                    icon = "clear";
-                                    lottieAnim = "clear" + prefix;
-                                } else if (description.toLowerCase().contains("storm")) {
-                                    icon = "tstorm";
-                                    lottieAnim = "thunderstorms" + prefix;
-                                } else if (description.toLowerCase().contains("wind") || description.toLowerCase().contains("gale") || description.toLowerCase().contains("dust") || description.toLowerCase().contains("blow")) {
-                                    icon = "wind";
-                                    lottieAnim = "wind";
-                                } else if (description.toLowerCase().contains("fog")) {
-                                    icon = "clouds";
-                                    lottieAnim = "fog";
-                                } else if (description.toLowerCase().contains("haze")) {
-                                    icon = "clouds";
-                                    lottieAnim = "haze";
-                                } else {
-                                    icon = "clouds";
-                                    lottieAnim = "cloudy";
-                                }
-                                */
+                                
                                 // Use icon URL from API instead
                                 String iconUrl = current.optString("icon", "");
                                 icon = iconUrl;
                                 lottieAnim = iconUrl;
+                                
+                                // Check if this is today's period
+                                boolean isToday = name.contains("This") || name.contains("Today");
+                                
                                 if (name.contains("Afternoon")) {
                                     coloredTemperature = new SpannableString(pair.afternoonTemperature != null ? pair.afternoonTemperature : "");
                                     if (pair.afternoonTemperature != null) coloredTemperature.setSpan(new ForegroundColorSpan(getResources().getColor(android.R.color.holo_red_light)), 0, pair.afternoonTemperature.length(), 0);
@@ -724,7 +772,7 @@ public class ForecastFragment extends Fragment {
                                     dailyHumidity.add(humidityText);
                                     dailyLottieAnimList.add(primaryLottieAnim);
                                     dailyDescList.add(descriptionText);
-                                    processedDays.add(dayOfWeek + "Afternoon");
+                                    processedPeriods.add(periodKey);
                                 } else if (name.contains("Tonight")) {
                                     coloredTemperature = new SpannableString(pair.tonightTemperature != null ? pair.tonightTemperature : "");
                                     if (pair.tonightTemperature != null) coloredTemperature.setSpan(new ForegroundColorSpan(getResources().getColor(android.R.color.holo_blue_light)), 0, pair.tonightTemperature.length(), 0);
@@ -740,8 +788,9 @@ public class ForecastFragment extends Fragment {
                                     dailyHumidity.add(humidityText);
                                     dailyLottieAnimList.add(primaryLottieAnim);
                                     dailyDescList.add(descriptionText);
-                                    processedDays.add(dayOfWeek + "Tonight");
-                                } else if (!processedDays.contains(dayOfWeek)) {
+                                    processedPeriods.add(periodKey);
+                                } else {
+                                    // For regular day/night periods, consolidate unless it's today
                                     String tempText = "";
                                     if (pair.dayTemperature != null) {
                                         tempText += pair.dayTemperature;
@@ -765,13 +814,13 @@ public class ForecastFragment extends Fragment {
                                     primaryIcon = pair.dayIcon != null ? pair.dayIcon : pair.nightIcon;
                                     primaryLottieAnim = pair.dayLottieAnim != null ? pair.dayLottieAnim : pair.nightLottieAnim;
                                     dailyItems.add(coloredTemperature);
-                                    dailyTime.add(dayOfWeek.replace("This", "").trim());
+                                    dailyTime.add(name.replace("This", "").trim());
                                     dailyIcon.add(primaryIcon);
                                     dailyPrecipitation.add(precipitationText);
                                     dailyHumidity.add(humidityText);
                                     dailyLottieAnimList.add(primaryLottieAnim);
                                     dailyDescList.add(descriptionText);
-                                    processedDays.add(dayOfWeek);
+                                    processedPeriods.add(periodKey);
                                 }
                             }
                         }
@@ -780,17 +829,46 @@ public class ForecastFragment extends Fragment {
                             String desc = dailyDescList.get(0).split(" / ")[0];
                             String highTemp = "";
                             String lowTemp = "";
+                            
+                            // Check if we're currently in nighttime to determine if high should start from next day
+                            boolean isCurrentlyNight = !isCurrentlyDaytime();
+                            int startIndex = isCurrentlyNight ? 1 : 0; // Skip today's high if it's nighttime
+                            
                             for (DailyForecastPair pair : forecastMap.values()) {
-                                if (pair.dayTemperature != null) {
-                                    // Extract the numeric part and compare (e.g., "78°" -> 78)
+                                // For each day, compare day and night temps to find the actual high and low
+                                if (pair.dayTemperature != null && pair.nightTemperature != null) {
+                                    // Extract numeric values for comparison
+                                    int dayTemp = Integer.parseInt(pair.dayTemperature.replaceAll("[^\\d.]", ""));
+                                    int nightTemp = Integer.parseInt(pair.nightTemperature.replaceAll("[^\\d.]", ""));
+                                    
+                                    // Determine which is actually higher/lower
+                                    String actualHigh = dayTemp > nightTemp ? pair.dayTemperature : pair.nightTemperature;
+                                    String actualLow = dayTemp < nightTemp ? pair.dayTemperature : pair.nightTemperature;
+                                    
+                                    // Set high temp (skip today if it's nighttime)
+                                    if (highTemp.isEmpty() || dayTemp > Integer.parseInt(highTemp.replaceAll("[^\\d.]", ""))) {
+                                        highTemp = actualHigh;
+                                    }
+                                    
+                                    // Set low temp
+                                    if (lowTemp.isEmpty() || nightTemp < Integer.parseInt(lowTemp.replaceAll("[^\\d.]", ""))) {
+                                        lowTemp = actualLow;
+                                    }
+                                } else if (pair.dayTemperature != null) {
+                                    // Only day temp available
                                     int dayTemp = Integer.parseInt(pair.dayTemperature.replaceAll("[^\\d.]", ""));
                                     if (highTemp.isEmpty() || dayTemp > Integer.parseInt(highTemp.replaceAll("[^\\d.]", ""))) {
                                         highTemp = pair.dayTemperature;
                                     }
-                                }
-                                if (pair.nightTemperature != null) {
-                                    // Extract the numeric part and compare (e.g., "78°" -> 78)
+                                    if (lowTemp.isEmpty() || dayTemp < Integer.parseInt(lowTemp.replaceAll("[^\\d.]", ""))) {
+                                        lowTemp = pair.dayTemperature;
+                                    }
+                                } else if (pair.nightTemperature != null) {
+                                    // Only night temp available
                                     int nightTemp = Integer.parseInt(pair.nightTemperature.replaceAll("[^\\d.]", ""));
+                                    if (highTemp.isEmpty() || nightTemp > Integer.parseInt(highTemp.replaceAll("[^\\d.]", ""))) {
+                                        highTemp = pair.nightTemperature;
+                                    }
                                     if (lowTemp.isEmpty() || nightTemp < Integer.parseInt(lowTemp.replaceAll("[^\\d.]", ""))) {
                                         lowTemp = pair.nightTemperature;
                                     }
@@ -815,41 +893,6 @@ public class ForecastFragment extends Fragment {
                                 layoutManager.scrollToPosition(firstVisibleItemPosition[0]);
                             }
                         });
-
-                        // After fetching daily forecast data and parsing periods:
-                        ArrayList<Double> dailyHighs = new ArrayList<>();
-                        ArrayList<Double> dailyLows = new ArrayList<>();
-                        ArrayList<Integer> dayIndices = new ArrayList<>();
-                        int dayIndex = 0;
-                        for (int i = 0; i < periods.length(); i++) {
-                            JSONObject period = periods.getJSONObject(i);
-                            if (period.getString("isDaytime").equals("true")) {
-                                double high = period.optDouble("temperature", Double.NaN);
-                                if (!Double.isNaN(high)) {
-                                    dailyHighs.add(high);
-                                    dayIndices.add(dayIndex);
-                                }
-                            } else {
-                                double low = period.optDouble("temperature", Double.NaN);
-                                if (!Double.isNaN(low)) {
-                                    dailyLows.add(low);
-                                }
-                                dayIndex++;
-                            }
-                        }
-                        LineGraphSeries<DataPoint> highSeries = new LineGraphSeries<>();
-                        LineGraphSeries<DataPoint> lowSeries = new LineGraphSeries<>();
-                        for (int i = 0; i < dailyHighs.size(); i++) {
-                            highSeries.appendData(new DataPoint(i, dailyHighs.get(i)), false, dailyHighs.size());
-                        }
-                        for (int i = 0; i < dailyLows.size(); i++) {
-                            lowSeries.appendData(new DataPoint(i, dailyLows.get(i)), false, dailyLows.size());
-                        }
-                        highSeries.setColor(ContextCompat.getColor(requireContext(), android.R.color.holo_red_light));
-                        lowSeries.setColor(ContextCompat.getColor(requireContext(), android.R.color.holo_blue_light));
-                        dailyGraphViewForecast.removeAllSeries();
-                        dailyGraphViewForecast.addSeries(highSeries);
-                        dailyGraphViewForecast.addSeries(lowSeries);
                     } catch (JSONException e) {
                         e.printStackTrace();
                         Toast.makeText(getContext(), "Error parsing daily forecast data", Toast.LENGTH_SHORT).show();

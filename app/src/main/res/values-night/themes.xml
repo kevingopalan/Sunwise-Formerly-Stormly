@@ -1,5 +1,6 @@
 <resources xmlns:android="http://schemas.android.com/apk/res/android"  android:forceDarkAllowed="true">
     <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:statusBarColor">@color/md_theme_surface</item>
         <item name="android:fontFamily">@font/montsemibold</item>
         <item name="android:fitsSystemWindows">true</item>
         <item name="colorPrimary">@color/md_theme_primary</item>
