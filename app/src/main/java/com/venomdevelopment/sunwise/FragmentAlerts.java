@@ -85,7 +85,7 @@ public class FragmentAlerts extends Fragment {
         showLoading();
         // Encode the address for the URL
         String encodedAddress = address.replaceAll(" ", "+");
-        String baseUrl = NominatimHostManager.getRandomSearchUrl() + encodedAddress;
+        String baseUrl = NominatimHostManager.getRandomSearchUrl();
         final String geocodeUrl;
         final boolean isCensus = NominatimHostManager.isCensusGeocoderUrl(baseUrl);
         if (isCensus) {
@@ -318,8 +318,9 @@ public class FragmentAlerts extends Fragment {
 
     private void fetchWeatherData(String pointsUrl) {
         // Fetch weather alerts based on the coordinates (pointsUrl)
+        String pointsUrlWithBuster = pointsUrl + "?t=" + System.currentTimeMillis();
         JsonObjectRequest jsonObjectRequest = new JsonObjectRequest
-                (Request.Method.GET, pointsUrl, null, response -> {
+                (Request.Method.GET, pointsUrlWithBuster, null, response -> {
                     try {
                         // Parse the JSON response for weather alerts
                         JSONArray featuresArray = response.getJSONArray("features");

@@ -214,6 +214,8 @@ public class ForecastFragment extends Fragment {
         weatherViewModel.getCurrentTemperature().observe(getViewLifecycleOwner(), temp -> {
             if (currentTempTextForecast != null) {
                 currentTempTextForecast.setText(temp);
+                // Hide loading spinner once we have temperature data
+                hideLoading();
             }
         });
 

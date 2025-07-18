@@ -148,14 +148,25 @@ public class WeatherViewModel extends ViewModel {
         fetchWeatherForLocation(context, address, false);
     }
 
-    // Internal method: if isBatch, only update the map, not the single-location LiveData
-    private void fetchWeatherForLocation(Context context, String address, boolean isBatch) {
+    // Sequential version: fetch geocoding and weather for each location one at a time
+    public void fetchWeatherForLocationsSequential(Context context, List<String> locations) {
+        fetchWeatherSequentially(context, locations, 0);
+    }
+
+    private void fetchWeatherSequentially(Context context, List<String> locations, int index) {
+        if (index >= locations.size()) return;
+        fetchWeatherForLocation(context, locations.get(index), true, () -> {
+            fetchWeatherSequentially(context, locations, index + 1);
+        });
+    }
+
+    // Overload: single-location fetch, updates both single and map LiveData, with callback for sequential
+    private void fetchWeatherForLocation(Context context, String address, boolean isBatch, Runnable onComplete) {
         final String TAG = "WeatherViewModel";
         final String BASE_URL_POINTS = "https://api.weather.gov/points/";
         final String USER_AGENT = "Sunwise/v0-prerelease" + System.getProperty("http.agent");
         final com.android.volley.RequestQueue requestQueue = SunwiseApp.getInstance().getRequestQueue();
 
-        // Helper methods for fallback
         class Fallbacks {
             void fetchGeocodingDataWithFallback(String address) {
                 String encodedAddress = address.replaceAll(" ", "+");
@@ -166,7 +177,7 @@ public class WeatherViewModel extends ViewModel {
                         if (result != null) {
                             NominatimHostManager.recordHostSuccess(geocodeUrl);
                             String pointsUrl = BASE_URL_POINTS + result.getLatitude() + "," + result.getLongitude();
-                            fetchWeatherData(requestQueue, USER_AGENT, pointsUrl, address);
+                            fetchWeatherData(requestQueue, USER_AGENT, pointsUrl, address, onComplete);
                         } else {
                             NominatimHostManager.addDelay(() -> fetchGeocodingDataWithCensusFallback(address));
                         }
@@ -198,15 +209,18 @@ public class WeatherViewModel extends ViewModel {
                         if (result != null) {
                             NominatimHostManager.recordHostSuccess(geocodeUrl);
                             String pointsUrl = BASE_URL_POINTS + result.getLatitude() + "," + result.getLongitude();
-                            fetchWeatherData(requestQueue, USER_AGENT, pointsUrl, address);
+                            fetchWeatherData(requestQueue, USER_AGENT, pointsUrl, address, onComplete);
                         } else {
                             // All hosts failed, do nothing or notify
+                            if (onComplete != null) onComplete.run();
                         }
                     } catch (Exception e) {
                         e.printStackTrace();
+                        if (onComplete != null) onComplete.run();
                     }
                 }, error -> {
                     Log.e(TAG, "Error fetching geocoding data from Census Geocoder: " + error.getMessage());
+                    if (onComplete != null) onComplete.run();
                 }) {
                     @Override
                     public Map<String, String> getHeaders() {
@@ -222,7 +236,6 @@ public class WeatherViewModel extends ViewModel {
         }
         Fallbacks fallbacks = new Fallbacks();
 
-        // Main geocoding fetch
         String encodedAddress = address.replaceAll(" ", "+");
         String baseUrl = NominatimHostManager.getRandomSearchUrl() + encodedAddress;
         final String geocodeUrl;
@@ -239,7 +252,7 @@ public class WeatherViewModel extends ViewModel {
                     if (result != null) {
                         NominatimHostManager.recordHostSuccess(geocodeUrl);
                         String pointsUrl = BASE_URL_POINTS + result.getLatitude() + "," + result.getLongitude();
-                        fetchWeatherData(requestQueue, USER_AGENT, pointsUrl, address);
+                        fetchWeatherData(requestQueue, USER_AGENT, pointsUrl, address, onComplete);
                     } else {
                         NominatimHostManager.addDelay(() -> fallbacks.fetchGeocodingDataWithFallback(address));
                     }
@@ -268,7 +281,7 @@ public class WeatherViewModel extends ViewModel {
                     if (result != null) {
                         NominatimHostManager.recordHostSuccess(geocodeUrl);
                         String pointsUrl = BASE_URL_POINTS + result.getLatitude() + "," + result.getLongitude();
-                        fetchWeatherData(requestQueue, USER_AGENT, pointsUrl, address);
+                        fetchWeatherData(requestQueue, USER_AGENT, pointsUrl, address, onComplete);
                     } else {
                         NominatimHostManager.addDelay(() -> fallbacks.fetchGeocodingDataWithFallback(address));
                     }
@@ -293,22 +306,27 @@ public class WeatherViewModel extends ViewModel {
         }
     }
 
-    // Move fetchWeatherData outside as a private method
-    private void fetchWeatherData(com.android.volley.RequestQueue requestQueue, String USER_AGENT, String pointsUrl, String originalAddress) {
+    // Overload for backward compatibility (no callback)
+    private void fetchWeatherForLocation(Context context, String address, boolean isBatch) {
+        fetchWeatherForLocation(context, address, isBatch, null);
+    }
+
+    // Update fetchWeatherData to accept onComplete
+    private void fetchWeatherData(com.android.volley.RequestQueue requestQueue, String USER_AGENT, String pointsUrl, String originalAddress, Runnable onComplete) {
         JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(Request.Method.GET, pointsUrl, null, response -> {
             try {
                 JSONObject properties = response.getJSONObject("properties");
                 String forecastUrl = properties.getString("forecast");
                 String forecastHourlyUrl = properties.getString("forecastHourly");
-                
                 // Use the hourly forecast for current weather data
-                fetchCurrentWeatherData(requestQueue, USER_AGENT, forecastHourlyUrl, originalAddress);
-                
+                fetchCurrentWeatherData(requestQueue, USER_AGENT, forecastHourlyUrl, originalAddress, onComplete);
             } catch (JSONException e) {
                 e.printStackTrace();
+                if (onComplete != null) onComplete.run();
             }
         }, error -> {
             Log.e("WeatherViewModel", "Error fetching points data: " + error.getMessage());
+            if (onComplete != null) onComplete.run();
         }) {
             @Override
             public Map<String, String> getHeaders() {
@@ -322,27 +340,28 @@ public class WeatherViewModel extends ViewModel {
         requestQueue.add(jsonObjectRequest);
     }
 
-    private void fetchCurrentWeatherData(com.android.volley.RequestQueue requestQueue, String USER_AGENT, String forecastUrl, String originalAddress) {
+    // Overload for backward compatibility (no callback)
+    private void fetchWeatherData(com.android.volley.RequestQueue requestQueue, String USER_AGENT, String pointsUrl, String originalAddress) {
+        fetchWeatherData(requestQueue, USER_AGENT, pointsUrl, originalAddress, null);
+    }
+
+    // Update fetchCurrentWeatherData to accept onComplete
+    private void fetchCurrentWeatherData(com.android.volley.RequestQueue requestQueue, String USER_AGENT, String forecastUrl, String originalAddress, Runnable onComplete) {
         Log.d("WeatherViewModel", "Fetching current weather data for: " + originalAddress + " from: " + forecastUrl);
         JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(Request.Method.GET, forecastUrl, null, response -> {
             try {
                 JSONObject properties = response.getJSONObject("properties");
                 JSONArray periods = properties.getJSONArray("periods");
-                
                 Log.d("WeatherViewModel", "Received forecast data for " + originalAddress + ", periods: " + periods.length());
-                
                 if (periods.length() > 0) {
                     JSONObject currentPeriod = periods.getJSONObject(0);
-                    
                     String temperature = currentPeriod.getString("temperature");
                     String description = currentPeriod.getString("shortForecast");
                     String icon = currentPeriod.getString("icon");
                     String wind = currentPeriod.getString("windSpeed") + " " + currentPeriod.getString("windDirection");
                     String humidity = "N/A"; // Not available in this API
                     String precipitation = "N/A"; // Not available in this API
-                    
                     Log.d("WeatherViewModel", "Weather data for " + originalAddress + ": temp=" + temperature + ", desc=" + description + ", icon=" + icon);
-                    
                     Map<String, WeatherSummary> map = locationWeatherMap.getValue();
                     map.put(originalAddress, new WeatherSummary(
                         temperature,
@@ -353,7 +372,6 @@ public class WeatherViewModel extends ViewModel {
                         precipitation
                     ));
                     locationWeatherMap.postValue(map);
-                    Log.d("WeatherViewModel", "Updated weather map, total entries: " + map.size());
                 } else {
                     Log.w("WeatherViewModel", "No periods found in forecast data for " + originalAddress);
                 }
@@ -361,8 +379,10 @@ public class WeatherViewModel extends ViewModel {
                 Log.e("WeatherViewModel", "Error parsing forecast data for " + originalAddress + ": " + e.getMessage());
                 e.printStackTrace();
             }
+            if (onComplete != null) onComplete.run();
         }, error -> {
             Log.e("WeatherViewModel", "Error fetching forecast data for " + originalAddress + ": " + error.getMessage());
+            if (onComplete != null) onComplete.run();
         }) {
             @Override
             public Map<String, String> getHeaders() {
@@ -374,5 +394,10 @@ public class WeatherViewModel extends ViewModel {
         };
         requestQueue.getCache().clear();
         requestQueue.add(jsonObjectRequest);
+    }
+
+    // Overload for backward compatibility (no callback)
+    private void fetchCurrentWeatherData(com.android.volley.RequestQueue requestQueue, String USER_AGENT, String forecastUrl, String originalAddress) {
+        fetchCurrentWeatherData(requestQueue, USER_AGENT, forecastUrl, originalAddress, null);
     }
 }

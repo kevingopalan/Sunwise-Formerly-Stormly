@@ -47,9 +47,7 @@ public class MainActivity extends AppCompatActivity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // Apply theme before setting content view
-        applyTheme();
-
+        
         setContentView(R.layout.activity_main);
         
         // Initialize MobileAds
@@ -192,7 +190,7 @@ public class MainActivity extends AppCompatActivity
             
             if (fragment != null) {
                 FragmentTransaction transaction = fragmentManager.beginTransaction();
-                transaction.add(R.id.fragment_container, fragment, currentDrawerFragmentTag);
+                transaction.replace(R.id.fragment_container, fragment, currentDrawerFragmentTag);
                 transaction.commit();
                 navigationView.setCheckedItem(navItemId);
             }
@@ -225,15 +223,8 @@ public class MainActivity extends AppCompatActivity
             // Clear back stack and remove any existing fragments (including ForecastFragment)
             fragmentManager.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE);
             
-            // Remove any existing fragments in the container
             FragmentTransaction transaction = fragmentManager.beginTransaction();
-            Fragment currentFragment = fragmentManager.findFragmentById(R.id.fragment_container);
-            if (currentFragment != null) {
-                transaction.remove(currentFragment);
-            }
-            
-            // Add the new fragment
-            transaction.add(R.id.fragment_container, fragment, tag);
+            transaction.replace(R.id.fragment_container, fragment, tag);
             transaction.commit();
             
             // Track the current drawer fragment
@@ -283,20 +274,8 @@ public class MainActivity extends AppCompatActivity
             transaction.remove(currentFragment);
         }
         
-        transaction.add(R.id.fragment_container, forecastFragment, "forecast");
-        transaction.addToBackStack("forecast");
+        transaction.replace(R.id.fragment_container, forecastFragment, "forecast");
         transaction.commit();
-    }
-
-    private void applyTheme() {
-        SharedPreferences prefs = getSharedPreferences("SunwiseSettings", Context.MODE_PRIVATE);
-        boolean darkModeEnabled = prefs.getBoolean("dark_mode_enabled", false);
-        
-        if (darkModeEnabled) {
-            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
-        } else {
-            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
-        }
     }
 
     @Override
