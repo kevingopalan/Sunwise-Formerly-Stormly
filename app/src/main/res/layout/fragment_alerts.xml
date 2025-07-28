@@ -17,17 +17,31 @@
             android:layout_height="wrap_content">
 
             <TextView
+                android:id="@+id/alertsText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Weather Alerts"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent"
-                android:layout_marginLeft="20dp"
                 android:layout_marginTop="100dp"
                 android:fontFamily="@font/montsemibold"
+                android:text="Weather Alerts"
                 android:textColor="?attr/colorOnBackground"
                 android:textSize="36dp"
-                android:id="@+id/alertsText"/>
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <TextView
+                android:id="@+id/noData"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/montmedium"
+                android:text="No alerts at the time."
+                android:textColor="#999999"
+                android:textSize="20dp"
+                android:layout_marginTop="100dp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/alertsText" />
+                <!--android:visibility="gone" />-->
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/alertsRecyclerView"
@@ -36,7 +50,8 @@
                 android:layout_marginLeft="20dp"
                 android:layout_marginRight="20dp"
                 android:layout_marginTop="50dp"
-                android:background="?attr/colorSurfaceContainer"
+                android:paddingBottom="20dp"
+                android:background="@drawable/main_background"
                 android:overScrollMode="never"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/alertsText"

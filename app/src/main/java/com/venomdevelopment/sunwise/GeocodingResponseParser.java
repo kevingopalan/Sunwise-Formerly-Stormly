@@ -10,28 +10,64 @@ import org.json.JSONObject;
  * Handles both Nominatim and U.S. Census Bureau Geocoder responses.
  */
 public class GeocodingResponseParser {
-    
+
     private static final String TAG = "GeocodingResponseParser";
-    
+
     /**
-     * Parses geocoding response and extracts latitude and longitude.
+     * Data class to hold geocoding results
+     */
+    public static class GeocodingResult {
+        private final String latitude;
+        private final String longitude;
+        private final String displayName; // <-- ADDED
+        private final String countryCode; // <-- ADDED
+
+        // Updated constructor
+        public GeocodingResult(String latitude, String longitude, String displayName, String countryCode) {
+            this.latitude = latitude;
+            this.longitude = longitude;
+            this.displayName = displayName;
+            this.countryCode = countryCode;
+        }
+
+        public String getLatitude() {
+            return latitude;
+        }
+
+        public String getLongitude() {
+            return longitude;
+        }
+
+        // Getter for displayName
+        public String getDisplayName() { // <-- ADDED
+            return displayName;
+        }
+
+        // Getter for countryCode
+        public String getCountryCode() { // <-- ADDED
+            return countryCode;
+        }
+    }
+
+    /**
+     * Parses geocoding response and extracts latitude, longitude, displayName, and countryCode.
      * Supports both Nominatim and Census Geocoder formats.
-     * 
+     *
      * @param response The JSON response from the geocoding API
      * @param url The URL that was used for the request (to determine API type)
-     * @return A GeocodingResult containing lat/lon, or null if parsing failed
+     * @return A GeocodingResult containing relevant data, or null if parsing failed
      */
     public static GeocodingResult parseGeocodingResponse(JSONArray response, String url) {
         try {
             if (NominatimHostManager.isCensusGeocoderUrl(url)) {
-                // Should not happen, but handle gracefully
-                Log.e(TAG, "Census Geocoder should return JSONObject, not JSONArray");
+                Log.e(TAG, "Census Geocoder should return JSONObject, not JSONArray. URL: " + url);
                 return null;
             } else {
-                return parseNominatimResponse(response);
+                // Pass the URL to determine source and assist parsing if needed, though not strictly used by parseNominatimResponse directly
+                return parseNominatimResponse(response, url);
             }
         } catch (JSONException e) {
-            Log.e(TAG, "Error parsing geocoding response: " + e.getMessage());
+            Log.e(TAG, "Error parsing geocoding JSON array: " + e.getMessage());
             return null;
         }
     }
@@ -42,77 +78,110 @@ public class GeocodingResponseParser {
     public static GeocodingResult parseGeocodingResponse(JSONObject response, String url) {
         try {
             if (NominatimHostManager.isCensusGeocoderUrl(url)) {
-                return parseCensusGeocoderResponse(response);
+                // Pass the URL to determine source and assist parsing if needed
+                return parseCensusGeocoderResponse(response, url);
             } else {
-                // Should not happen, but handle gracefully
-                Log.e(TAG, "Nominatim should return JSONArray, not JSONObject");
+                Log.e(TAG, "Nominatim should return JSONArray, not JSONObject. URL: " + url);
+                // If you expect Nominatim to sometimes return JSONObject for specific calls (e.g. reverse geocode for one result)
+                // you might need a different parsing path here or ensure those calls use parseReverseGeocodingResponse.
+                // For forward geocoding for country check, Nominatim (search endpoint) gives JSONArray.
                 return null;
             }
         } catch (JSONException e) {
-            Log.e(TAG, "Error parsing geocoding response: " + e.getMessage());
+            Log.e(TAG, "Error parsing geocoding JSON object: " + e.getMessage());
             return null;
         }
     }
-    
+
     /**
      * Parses Nominatim API response format
+     * @param response JSONArray from Nominatim
+     * @param sourceUrl The original request URL (for logging/context, not strictly needed for parsing logic here)
+     * @return GeocodingResult or null
+     * @throws JSONException
      */
-    private static GeocodingResult parseNominatimResponse(JSONArray response) throws JSONException {
-        if (response.length() == 0) {
-            Log.w(TAG, "Nominatim response is empty");
+    private static GeocodingResult parseNominatimResponse(JSONArray response, String sourceUrl) throws JSONException {
+        if (response == null || response.length() == 0) {
+            Log.w(TAG, "Nominatim response is null or empty. URL: " + sourceUrl);
             return null;
         }
-        
+
         JSONObject firstResult = response.getJSONObject(0);
-        String lat = firstResult.getString("lat");
-        String lon = firstResult.getString("lon");
-        
-        return new GeocodingResult(lat, lon);
+        String lat = firstResult.optString("lat");
+        String lon = firstResult.optString("lon");
+        String displayName = firstResult.optString("display_name"); // <-- Get display_name
+
+        String countryCode = null; // <-- Initialize countryCode
+        JSONObject addressDetails = firstResult.optJSONObject("address");
+        if (addressDetails != null) {
+            countryCode = addressDetails.optString("country_code", null); // Default to null if not found
+        }
+
+        if (lat.isEmpty() || lon.isEmpty()) {
+            Log.w(TAG, "Nominatim response missing lat/lon. DisplayName: " + displayName + ", URL: " + sourceUrl);
+            return null; // Or handle as a partial result if needed
+        }
+
+        Log.d(TAG, "Parsed Nominatim: Lat=" + lat + ", Lon=" + lon + ", Name=" + displayName + ", CC=" + countryCode);
+        return new GeocodingResult(lat, lon, displayName, countryCode);
     }
-    
+
     /**
      * Parses U.S. Census Bureau Geocoder API response format (from JSONObject)
+     * @param response JSONObject from Census Geocoder
+     * @param sourceUrl The original request URL
+     * @return GeocodingResult or null
+     * @throws JSONException
      */
-    private static GeocodingResult parseCensusGeocoderResponse(JSONObject response) throws JSONException {
-        JSONObject result = response.getJSONObject("result");
-        JSONArray matches = result.getJSONArray("addressMatches");
-        if (matches.length() == 0) {
-            Log.w(TAG, "Census Geocoder response has no matches");
+    private static GeocodingResult parseCensusGeocoderResponse(JSONObject response, String sourceUrl) throws JSONException {
+        if (response == null) {
+            Log.w(TAG, "Census Geocoder response is null. URL: " + sourceUrl);
             return null;
         }
-        JSONObject match = matches.getJSONObject(0);
-        JSONObject coords = match.getJSONObject("coordinates");
-        String lon = String.valueOf(coords.getDouble("x"));
-        String lat = String.valueOf(coords.getDouble("y"));
-        return new GeocodingResult(lat, lon);
+        JSONObject result = response.optJSONObject("result");
+        if (result == null) {
+            Log.w(TAG, "Census Geocoder response missing 'result' object. URL: " + sourceUrl);
+            return null;
+        }
+
+        JSONArray matches = result.optJSONArray("addressMatches");
+        if (matches == null || matches.length() == 0) {
+            Log.w(TAG, "Census Geocoder response has no addressMatches. URL: " + sourceUrl);
+            return null;
+        }
+
+        JSONObject firstMatch = matches.getJSONObject(0); // Assuming we always take the first match
+        JSONObject coordinates = firstMatch.optJSONObject("coordinates");
+        String matchedAddress = firstMatch.optString("matchedAddress"); // This will be our displayName
+
+        if (coordinates == null) {
+            Log.w(TAG, "Census Geocoder response missing 'coordinates'. MatchedAddress: " + matchedAddress + ", URL: " + sourceUrl);
+            return null;
+        }
+
+        // Census uses x for longitude, y for latitude
+        String lon = String.valueOf(coordinates.optDouble("x", Double.NaN));
+        String lat = String.valueOf(coordinates.optDouble("y", Double.NaN));
+
+        if (Double.isNaN(coordinates.optDouble("x", Double.NaN)) || Double.isNaN(coordinates.optDouble("y", Double.NaN))) {
+            Log.w(TAG, "Census Geocoder response missing x or y in coordinates. MatchedAddress: " + matchedAddress + ", URL: " + sourceUrl);
+            return null;
+        }
+
+        // For Census, countryCode is always "us" if successful
+        String countryCode = "us";
+        Log.d(TAG, "Parsed Census: Lat=" + lat + ", Lon=" + lon + ", Name=" + matchedAddress + ", CC=" + countryCode);
+        return new GeocodingResult(lat, lon, matchedAddress, countryCode);
     }
-    
+
     /**
-     * Parses geocoding response from JSONObject (for reverse geocoding)
+     * Parses geocoding response from JSONObject (for reverse geocoding from Nominatim)
      * Only supports Nominatim format since Census Geocoder doesn't support reverse geocoding
      */
     public static String parseReverseGeocodingResponse(JSONObject response) throws JSONException {
+        // This method is separate and returns a String, not a GeocodingResult.
+        // It's used by your HomeFragment's reverseGeocode methods.
+        // If you wanted this to also return a GeocodingResult, you'd adapt it similarly.
         return response.getString("display_name");
     }
-    
-    /**
-     * Data class to hold geocoding results
-     */
-    public static class GeocodingResult {
-        private final String latitude;
-        private final String longitude;
-        
-        public GeocodingResult(String latitude, String longitude) {
-            this.latitude = latitude;
-            this.longitude = longitude;
-        }
-        
-        public String getLatitude() {
-            return latitude;
-        }
-        
-        public String getLongitude() {
-            return longitude;
-        }
-    }
-} 
+}

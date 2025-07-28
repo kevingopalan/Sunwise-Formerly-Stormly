@@ -69,38 +69,45 @@ public class GeocodingRetryManager {
                                         GeocodingSuccessCallback successCallback,
                                         GeocodingFailureCallback failureCallback,
                                         int attemptCount) {
-        
+
         // Check if context is null (fragment detached)
         if (context == null) {
             Log.w(TAG, "Context is null during retry attempt " + attemptCount + ", aborting");
             failureCallback.onFailure("Unable to complete geocoding request");
             return;
         }
-        
+
         // Check if we've exceeded max attempts
         if (attemptCount >= NominatimHostManager.getDynamicMaxRetryAttempts()) {
             Log.w(TAG, "Max retry attempts reached for address: " + address);
             failureCallback.onFailure("Some locations couldn't be geocoded after multiple attempts");
             return;
         }
-        
-        // Get a working host URL
-        String workingHostUrl = NominatimHostManager.getWorkingHostUrl();
-        if (workingHostUrl == null) {
-            Log.w(TAG, "No working hosts available for retry");
-            failureCallback.onFailure("No working geocoding services available");
-            return;
+
+        // Try to get a working host URL first (preferred)
+        String hostUrl = NominatimHostManager.getWorkingHostUrl();
+
+        // If no working host is available, try all available APIs in sequence
+        if (hostUrl == null) {
+            Log.d(TAG, "No known working hosts, trying all available APIs for attempt " + (attemptCount + 1));
+            hostUrl = getNextAvailableApiUrl(attemptCount);
+
+            if (hostUrl == null) {
+                Log.w(TAG, "No geocoding APIs available for retry");
+                failureCallback.onFailure("No geocoding services available");
+                return;
+            }
         }
-        
+
         // Encode the address
         String encodedAddress = address.replaceAll(" ", "+");
         final String geocodeUrl;
-        final boolean isCensus = NominatimHostManager.isCensusGeocoderUrl(workingHostUrl);
+        final boolean isCensus = NominatimHostManager.isCensusGeocoderUrl(hostUrl);
         
         if (isCensus) {
-            geocodeUrl = workingHostUrl + encodedAddress + NominatimHostManager.getCensusGeocoderParams();
+            geocodeUrl = hostUrl + encodedAddress + NominatimHostManager.getCensusGeocoderParams();
         } else {
-            geocodeUrl = workingHostUrl + encodedAddress + "&format=json&addressdetails=1";
+            geocodeUrl = hostUrl + encodedAddress + "&format=json&addressdetails=1";
         }
         
         Log.d(TAG, "Retry attempt " + (attemptCount + 1) + " for address: " + address + " using: " + geocodeUrl);
@@ -179,4 +186,23 @@ public class GeocodingRetryManager {
             SunwiseApp.getInstance().getRequestQueue().add(jsonArrayRequest);
         }
     }
-} 
+
+    /**
+     * Gets the next available API URL to try when no working hosts are known.
+     * Cycles through all available APIs (Nominatim and Census) based on attempt count.
+     * @param attemptCount The current attempt number
+     * @return The next API URL to try, or null if no more APIs available
+     */
+    private static String getNextAvailableApiUrl(int attemptCount) {
+        // Define all available API URLs
+        String[] allApiUrls = {
+            "https://osm-nominatim.gs.mil/search?q=",
+            "https://nominatim.openstreetmap.org/search?q=",
+            "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address="
+        };
+
+        // Cycle through APIs based on attempt count
+        int apiIndex = attemptCount % allApiUrls.length;
+        return allApiUrls[apiIndex];
+    }
+}

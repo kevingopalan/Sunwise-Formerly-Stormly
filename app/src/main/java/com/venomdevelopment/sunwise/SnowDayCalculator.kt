@@ -17,7 +17,7 @@ class SnowDayCalculator(
     val schoolType: SchoolType,
     private val theday: Int
 ) {
-    private val BASE_URL = "http://www.snowdaycalculator.com/prediction.php"
+    private val BASE_URL = "https://www.snowdaycalculator.com/prediction.php"
 
 
     @get:Throws(IOException::class)
@@ -123,5 +123,3 @@ class SnowDayCalculator(
         PUBLIC(0.0), URBAN_PUBLIC(0.4), RURAL_PUBLIC(-0.4), PRIVATE_PREP(-0.4), BOARDING(1.0)
     }
 }
-
-
