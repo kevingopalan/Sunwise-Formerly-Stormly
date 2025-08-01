@@ -39,4 +39,3 @@ class SnowDayTask(
         fun onPredictionReceived(prediction: Long)
     }
 }
-

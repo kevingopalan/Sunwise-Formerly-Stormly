@@ -10,6 +10,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.fragment.app.Fragment;
@@ -37,6 +38,7 @@ public class FragmentAlerts extends Fragment {
 
     private static final String TAG = "FragmentAlerts";
     private RecyclerView recyclerView;
+    private TextView noDataTextView;
     private AlertsRecyclerViewAdapter adapter;
     private LinearLayout progressBar;
 
@@ -66,6 +68,7 @@ public class FragmentAlerts extends Fragment {
         recyclerView.setAdapter(adapter);
 
         progressBar = view.findViewById(R.id.progressBar);
+        noDataTextView = view.findViewById(R.id.noData);
 
         // Fetch address from SharedPreferences
         String address = getPreferenceValue();
@@ -318,9 +321,8 @@ public class FragmentAlerts extends Fragment {
 
     private void fetchWeatherData(String pointsUrl) {
         // Fetch weather alerts based on the coordinates (pointsUrl)
-        String pointsUrlWithBuster = pointsUrl + "?t=" + System.currentTimeMillis();
         JsonObjectRequest jsonObjectRequest = new JsonObjectRequest
-                (Request.Method.GET, pointsUrlWithBuster, null, response -> {
+                (Request.Method.GET, pointsUrl, null, response -> {
                     try {
                         // Parse the JSON response for weather alerts
                         JSONArray featuresArray = response.getJSONArray("features");
@@ -381,6 +383,13 @@ public class FragmentAlerts extends Fragment {
         // Update the adapter with the new data
         adapter = new AlertsRecyclerViewAdapter(getContext(), alertHeadlines, alertTypes, alertDescriptions);
         recyclerView.setAdapter(adapter);
+        if (adapter != null && adapter.getItemCount() == 0) {
+            noDataTextView.setVisibility(View.VISIBLE);
+            recyclerView.setVisibility(View.GONE);
+        } else {
+            noDataTextView.setVisibility(View.GONE);
+            recyclerView.setVisibility(View.VISIBLE);
+        }
     }
 
     private void showLoading() {

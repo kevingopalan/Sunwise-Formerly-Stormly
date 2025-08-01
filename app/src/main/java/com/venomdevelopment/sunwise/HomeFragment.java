@@ -90,7 +90,7 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
     private Handler reloadHandler = new Handler(Looper.getMainLooper());
     private int weatherReloadAttempts = 0;
     private static final int MAX_WEATHER_RELOADS = 8;
-    private static final int RELOAD_DELAY_MS = 2000; // 2 seconds between retries
+    private static final int RELOAD_DELAY_MS = 500; // 2 seconds between retries
     private final Set<String> processedGeocodeAddresses = new HashSet<>();
     
     // Location timeout tracking
@@ -176,11 +176,14 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
         });
 
         search.setOnEditorActionListener((v1, actionId, event) -> {
-            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE || actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH || (event != null && event.getKeyCode() == android.view.KeyEvent.KEYCODE_ENTER && event.getAction() == android.view.KeyEvent.ACTION_DOWN)) {
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE ||
+                    actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH ||
+                    (event != null && event.getKeyCode() == android.view.KeyEvent.KEYCODE_ENTER &&
+                            event.getAction() == android.view.KeyEvent.ACTION_DOWN)) {
                 String address = search.getText().toString().trim();
                 if (!address.isEmpty()) {
-                    writeToPreference(address);
-                    setLocationAndNavigateToForecast(address);
+                    // Instead of direct navigation, check country first
+                    checkCountryAndProceed(address);
                 } else {
                     Toast.makeText(requireContext(), "Please enter an address", Toast.LENGTH_SHORT).show();
                 }
@@ -192,9 +195,8 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
         searchButton.setOnClickListener(v1 -> {
             String address = search.getText().toString().trim();
             if (!address.isEmpty()) {
-                // Save the searched address to SharedPreferences
-                writeToPreference(address);
-                setLocationAndNavigateToForecast(address);
+                // Instead of direct navigation, check country first
+                checkCountryAndProceed(address);
             } else {
                 Toast.makeText(requireContext(), "Please enter an address", Toast.LENGTH_SHORT).show();
             }
@@ -757,4 +759,82 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
         
         Log.d(TAG, "Weather fetching cancelled - navigating to ForecastFragment");
     }
+    private void checkCountryAndProceed(String address) {
+        if (!isAdded() || getActivity() == null || address == null || address.trim().isEmpty()) {
+            if (address != null && !address.trim().isEmpty()) {
+                Toast.makeText(requireContext(), "Please enter a valid address", Toast.LENGTH_SHORT).show();
+            }
+            return;
+        }
+
+        showLoading(); // Show loading indicator
+
+        Log.d(TAG, "Checking country for address (with retry): " + address);
+
+        // This is the core linkage: Calling GeocodingRetryManager
+        GeocodingRetryManager.geocodeWithRetry(
+                requireContext(), // Context
+                address,          // Address to geocode
+                USER_AGENT,       // User-Agent
+                new GeocodingRetryManager.GeocodingSuccessCallback() {
+                    @Override
+                    public void onSuccess(GeocodingResponseParser.GeocodingResult result) {
+                        if (!isAdded() || getActivity() == null) return; // Fragment not attached or activity gone
+                        hideLoading();
+
+                        String countryCode = result.getCountryCode();
+                        String displayName = result.getDisplayName();
+
+                        Log.d(TAG, "Geocoding success for country check. Address: '" + address + "', DisplayName: '" + displayName + "', Country Code: '" + countryCode + "'");
+
+                        if ("us".equalsIgnoreCase(countryCode)) {
+                            // It's a US location, proceed with saving and navigation
+                            writeToPreference(address); // Use the original searched address for preference
+                            setLocationAndNavigateToForecast(address); // Navigate with original address
+                        } else {
+                            // Not a US location (or countryCode is null if parsing failed but was "successful" retry)
+                            showUsOnlyDialog(displayName != null && !displayName.isEmpty() ? displayName : address, countryCode);
+                        }
+                    }
+                },
+                new GeocodingRetryManager.GeocodingFailureCallback() {
+                    @Override
+                    public void onFailure(String errorMessage) {
+                        if (!isAdded() || getActivity() == null) return; // Fragment not attached or activity gone
+                        hideLoading();
+                        Log.e(TAG, "Geocoding failed after retries for country check (address: '" + address + "'): " + errorMessage);
+                        // Show a generic error or the one from the retry manager
+                        showNominatimErrorDialog("Could not verify location. Please try again. Error: " + errorMessage);
+                    }
+                }
+        );
+    }
+
+    // The showUsOnlyDialog method (ensure it's present in your HomeFragment)
+    private void showUsOnlyDialog(String attemptedAddress, @Nullable String countryCode) {
+        if (!isAdded() || getActivity() == null) return;
+
+        String message;
+        if (countryCode != null && !countryCode.isEmpty() && !"us".equalsIgnoreCase(countryCode)) {
+            message = "Sorry, \"" + attemptedAddress + "\" (located in " + countryCode.toUpperCase() + ") is not supported. This app currently only provides weather information for locations within the United States.";
+        } else if (attemptedAddress != null && !attemptedAddress.isEmpty()){
+            // This covers cases where countryCode might be null (e.g. geocoding failed to determine country)
+            // or if countryCode was 'us' but we still want to show a generic message for some edge cases.
+            // However, the primary check is the 'if' above. If it's 'us', we wouldn't reach showUsOnlyDialog
+            // unless called from onFailure or if the GeocodingResult had 'us' but was still problematic.
+            // For clarity, this condition is more for "could not determine it's US"
+            message = "Sorry, the location \"" + attemptedAddress + "\" could not be identified as being within the United States, or the location is not supported. This app currently only supports US locations.";
+        } else {
+            message = "Sorry, the location could not be identified as being within the United States. This app currently only supports US locations.";
+        }
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Location Not Supported")
+                .setMessage(message)
+                .setPositiveButton(android.R.string.ok, (dialog, which) -> dialog.dismiss())
+                .setCancelable(false)
+                .setIcon(android.R.drawable.ic_dialog_alert)
+                .show();
+    }
+
 }
