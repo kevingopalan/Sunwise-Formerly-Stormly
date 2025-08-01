@@ -24,3 +24,14 @@ jobs:
       run: chmod +x gradlew
     - name: Build with Gradle
       run: ./gradlew build
+    - name: Android Apk CI
+      # You may pin to the exact commit or the version.
+     # uses: yuanjinsongquyi/action_android_build@8aed3b1905e4610e1d4f2140da8561b78f3a7945
+      uses: yuanjinsongquyi/action_android_build@v1
+      with:
+        GITHUB_TOKEN: # optional
+        CI_TOKEN: # optional
+        APP_NAME: # optional
+        TYPEPACKAGE: # optional
+          
+      
