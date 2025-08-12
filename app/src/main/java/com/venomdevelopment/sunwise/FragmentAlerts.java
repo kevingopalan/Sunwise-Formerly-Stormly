@@ -43,7 +43,7 @@ public class FragmentAlerts extends Fragment {
     private LinearLayout progressBar;
 
     private static final String BASE_URL_POINTS = "https://api.weather.gov/alerts/active?point=";
-    private static final String USER_AGENT = "Sunwise/v0-prerelease" + System.getProperty("http.agent");  // Make sure to set a User-Agent
+    private static final String USER_AGENT = "Sunwise/v1 (venomdevelopmentofficial@gmail.com)" + System.getProperty("http.agent");  // Make sure to set a User-Agent
     private static final String myPref = "addressPref";  // Your SharedPreferences name
 
     private RequestQueue requestQueue;

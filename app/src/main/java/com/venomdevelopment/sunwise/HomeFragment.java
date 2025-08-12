@@ -57,7 +57,7 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
     private static final String TAG = "HomeFragment";
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 100;
     private static final String BASE_URL_POINTS = "https://api.weather.gov/points/";
-    private static final String USER_AGENT = "Sunwise/v0-prerelease" + System.getProperty("http.agent");
+    private static final String USER_AGENT = "Sunwise/v1 (venomdevelopmentofficial@gmail.com)" + System.getProperty("http.agent");
     private static final String PREF_SAVED_LOCATIONS = "saved_locations";
 
     private EditText search;
@@ -541,27 +541,25 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
 
     private void setLocationAndNavigateToForecast(String location) {
         if (!isAdded() || getActivity() == null) return;
-        
-        // Cancel all weather fetching immediately when navigating to ForecastFragment
+
+        // Cancel any pending weather fetching before navigating
         cancelWeatherFetching();
-        
-        if (!isAutoDetectTriggered) {
-            // Only navigate if not triggered by auto-detect
-            if (navigateToForecastListener != null) {
-                navigateToForecastListener.onNavigateToForecast(location);
-            }
+
+        boolean shouldNavigate = !isAutoDetectTriggered;
+        Log.d(TAG, "isAutoDetectTriggered (before changing): " + isAutoDetectTriggered);
+        Log.d(TAG, "ShouldNavigate: " + shouldNavigate);
+
+        if (navigateToForecastListener != null) {
+            navigateToForecastListener.onNavigateToForecast(location);
+        } else {
+            Log.d(TAG, "either shouldNavigate is false or navigateToForecastListener is null");
         }
-        isAutoDetectTriggered = false;
     }
 
     @Override
     public void onLocationClick(String location) {
         // Save the selected location to SharedPreferences
         writeToPreference(location);
-        
-        // Cancel all weather fetching immediately when navigating to ForecastFragment
-        cancelWeatherFetching();
-        
         setLocationAndNavigateToForecast(location);
     }
 
@@ -780,7 +778,6 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
                     @Override
                     public void onSuccess(GeocodingResponseParser.GeocodingResult result) {
                         if (!isAdded() || getActivity() == null) return; // Fragment not attached or activity gone
-                        hideLoading();
 
                         String countryCode = result.getCountryCode();
                         String displayName = result.getDisplayName();

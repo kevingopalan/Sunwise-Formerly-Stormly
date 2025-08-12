@@ -78,7 +78,7 @@ public class ForecastFragment extends Fragment {
 
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final String BASE_URL_POINTS = "https://api.weather.gov/points/";
-    private static final String USER_AGENT = "Sunwise/v0-prerelease" + System.getProperty("http.agent");
+    private static final String USER_AGENT = "Sunwise/v1 (venomdevelopmentofficial@gmail.com)" + System.getProperty("http.agent");
     private LottieAnimationView animationViewForecast;
     private RequestQueue requestQueue;
     private TextView currentTempTextForecast; // Changed name for clarity
@@ -147,12 +147,12 @@ public class ForecastFragment extends Fragment {
         // Initialize Volley RequestQueue
         requestQueue = SunwiseApp.getInstance().getRequestQueue();
 
-        // Load preferences
-        sunwisePrefs = requireActivity().getSharedPreferences("SunwisePrefs", Context.MODE_PRIVATE);
-        tempUnit = sunwisePrefs.getString("tempUnit", "us");
-        windUnit = sunwisePrefs.getString("windUnit", "mph");
-        showDecimalTemp = sunwisePrefs.getBoolean("showDecimalTemp", false);
-        use24HourFormat = sunwisePrefs.getBoolean("use24HourFormat", false);
+    // Load preferences (use the same as SettingsFragment)
+    sunwisePrefs = requireActivity().getSharedPreferences("SunwiseSettings", Context.MODE_PRIVATE);
+    tempUnit = sunwisePrefs.getString("unit", "us");
+    windUnit = sunwisePrefs.getString("wind_unit", "mph");
+    showDecimalTemp = sunwisePrefs.getBoolean("show_decimal_temp", false);
+    use24HourFormat = sunwisePrefs.getBoolean("use_24_hour_format", false);
 
         // Setup RecyclerViews
         dailyRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
@@ -214,8 +214,6 @@ public class ForecastFragment extends Fragment {
         weatherViewModel.getCurrentTemperature().observe(getViewLifecycleOwner(), temp -> {
             if (currentTempTextForecast != null) {
                 currentTempTextForecast.setText(temp);
-                // Hide loading spinner once we have temperature data
-                hideLoading();
             }
         });
 
@@ -309,24 +307,47 @@ public class ForecastFragment extends Fragment {
             }
         });
 
+        // Observe day and night series independently and always clear before adding
         weatherViewModel.getDailyGraphDataDay().observe(getViewLifecycleOwner(), daySeries -> {
-            if (daySeries != null && dailyGraphViewForecast != null) {
+            if (dailyGraphViewForecast != null) {
                 dailyGraphViewForecast.removeAllSeries();
-                daySeries.setColor(getResources().getColor(android.R.color.holo_red_light));
-                daySeries.setDrawDataPoints(true);
-                daySeries.setDataPointsRadius(8);
-                daySeries.setThickness(3);
-                dailyGraphViewForecast.addSeries(daySeries);
-                
-                weatherViewModel.getDailyGraphDataNight().observe(getViewLifecycleOwner(), nightSeries -> {
-                    if (nightSeries != null) {
-                        nightSeries.setColor(getResources().getColor(android.R.color.holo_blue_light));
-                        nightSeries.setDrawDataPoints(true);
-                        nightSeries.setDataPointsRadius(8);
-                        nightSeries.setThickness(3);
-                        dailyGraphViewForecast.addSeries(nightSeries);
-                    }
-                });
+                if (daySeries != null) {
+                    daySeries.setColor(getResources().getColor(android.R.color.holo_red_light));
+                    daySeries.setDrawDataPoints(true);
+                    daySeries.setDataPointsRadius(8);
+                    daySeries.setThickness(3);
+                    dailyGraphViewForecast.addSeries(daySeries);
+                }
+                // Add night series if it exists
+                LineGraphSeries<DataPoint> nightSeries = weatherViewModel.getDailyGraphDataNight().getValue();
+                if (nightSeries != null) {
+                    nightSeries.setColor(getResources().getColor(android.R.color.holo_blue_light));
+                    nightSeries.setDrawDataPoints(true);
+                    nightSeries.setDataPointsRadius(8);
+                    nightSeries.setThickness(3);
+                    dailyGraphViewForecast.addSeries(nightSeries);
+                }
+            }
+        });
+        weatherViewModel.getDailyGraphDataNight().observe(getViewLifecycleOwner(), nightSeries -> {
+            if (dailyGraphViewForecast != null) {
+                dailyGraphViewForecast.removeAllSeries();
+                // Add day series if it exists
+                LineGraphSeries<DataPoint> daySeries = weatherViewModel.getDailyGraphDataDay().getValue();
+                if (daySeries != null) {
+                    daySeries.setColor(getResources().getColor(android.R.color.holo_red_light));
+                    daySeries.setDrawDataPoints(true);
+                    daySeries.setDataPointsRadius(8);
+                    daySeries.setThickness(3);
+                    dailyGraphViewForecast.addSeries(daySeries);
+                }
+                if (nightSeries != null) {
+                    nightSeries.setColor(getResources().getColor(android.R.color.holo_blue_light));
+                    nightSeries.setDrawDataPoints(true);
+                    nightSeries.setDataPointsRadius(8);
+                    nightSeries.setThickness(3);
+                    dailyGraphViewForecast.addSeries(nightSeries);
+                }
             }
         });
     }
@@ -358,7 +379,6 @@ public class ForecastFragment extends Fragment {
                                 updateLocationDisplay(address);
                                 processedGeocodeAddresses.add(address);
                                 fetchWeatherData(pointsUrl);
-                                hideLoading();
                             } else {
                                 NominatimHostManager.addDelay(() -> {
                                     if (isAdded()) fetchGeocodingDataWithFallback(address);
@@ -403,7 +423,6 @@ public class ForecastFragment extends Fragment {
                                 updateLocationDisplay(address);
                                 processedGeocodeAddresses.add(address);
                                 fetchWeatherData(pointsUrl);
-                                hideLoading();
                             } else {
                                 NominatimHostManager.addDelay(() -> {
                                     if (isAdded()) fetchGeocodingDataWithFallback(address);
@@ -459,7 +478,6 @@ public class ForecastFragment extends Fragment {
                             updateLocationDisplay(address);
                             processedGeocodeAddresses.add(address);
                             fetchWeatherData(pointsUrl);
-                            hideLoading();
                         } else {
                             // Try Census Geocoder as final fallback
                             NominatimHostManager.addDelay(() -> {
@@ -516,7 +534,6 @@ public class ForecastFragment extends Fragment {
                             updateLocationDisplay(address);
                             processedGeocodeAddresses.add(address);
                             fetchWeatherData(pointsUrl);
-                            hideLoading();
                         } else {
                             // All hosts failed, try retry mechanism
                             tryRetryGeocoding(address);
@@ -568,7 +585,6 @@ public class ForecastFragment extends Fragment {
                         processedGeocodeAddresses.add(address);
                         fetchWeatherData(pointsUrl);
                     }
-                    hideLoading();
                 },
                 errorMessage -> {
                     if (isAdded()) {
@@ -639,11 +655,28 @@ public class ForecastFragment extends Fragment {
         requestQueue.add(jsonObjectRequest);
     }
 
+    // Helper to convert temperature for graph plotting
+    private double convertTemperatureForGraph(double temp, String unit) {
+        switch (unit) {
+            case "si":
+            case "ca":
+            case "uk":
+                return (temp - 32) * 5.0 / 9.0;
+            case "us":
+            default:
+                return temp;
+        }
+    }
+
     private void fetchDailyForecast(String forecastUrl) {
         JsonObjectRequest forecastRequest = new JsonObjectRequest(
                 Request.Method.GET, forecastUrl, null, response -> {
                     if (isAdded()) {
                     try {
+                        // Explicitly clear daily graph before updating
+                        if (dailyGraphViewForecast != null) {
+                            dailyGraphViewForecast.removeAllSeries();
+                        }
                         JSONObject properties = response.getJSONObject("properties");
                         JSONArray periods = properties.getJSONArray("periods");
                         LineGraphSeries<DataPoint> daySeries = new LineGraphSeries<>();
@@ -655,8 +688,10 @@ public class ForecastFragment extends Fragment {
                             JSONObject nightPeriod = periods.getJSONObject(2 * i + 1);
                             double dayTemp = dayPeriod.getDouble("temperature");
                             double nightTemp = nightPeriod.getDouble("temperature");
-                            daySeries.appendData(new DataPoint(i, dayTemp), false, 7);
-                            nightSeries.appendData(new DataPoint(i, nightTemp), false, 7);
+                            double dayTempConverted = convertTemperatureForGraph(dayTemp, tempUnit);
+                            double nightTempConverted = convertTemperatureForGraph(nightTemp, tempUnit);
+                            daySeries.appendData(new DataPoint(i, dayTempConverted), false, 7);
+                            nightSeries.appendData(new DataPoint(i, nightTempConverted), false, 7);
                         }
                         weatherViewModel.setDailyGraphDataDay(daySeries);
                         weatherViewModel.setDailyGraphDataNight(nightSeries);
@@ -879,6 +914,7 @@ public class ForecastFragment extends Fragment {
                             weatherViewModel.setHighTemperature(highTemp);
                             weatherViewModel.setLowTemperature(lowTemp);
                             weatherViewModel.setDescription(desc);
+                            hideLoading();
                         }
                         DailyForecastAdapter adapter = new DailyForecastAdapter(getContext(), dailyItems, dailyTime, dailyIcon, dailyPrecipitation, dailyHumidity, dailyLottieAnimList, dailyDescList);
                         dailyRecyclerView.setAdapter(adapter);
@@ -1032,6 +1068,10 @@ public class ForecastFragment extends Fragment {
                             DateTimeFormatter.ofPattern("h:00 a");
                         DateTimeFormatter dayOutputFormatter = DateTimeFormatter.ofPattern("EEE");
                         LocalDateTime now = LocalDateTime.now();
+                        // Explicitly clear hourly graph before updating
+                        if (hourlyGraphViewForecast != null) {
+                            hourlyGraphViewForecast.removeAllSeries();
+                        }
                         LineGraphSeries<DataPoint> series = new LineGraphSeries<>();
                         for (int i = 0; i < periods.length() && i < 48; i++) {
                             JSONObject current = periods.getJSONObject(i);
@@ -1068,12 +1108,13 @@ public class ForecastFragment extends Fragment {
                             hourlyHumidity.add(humidityValue);
                             hourlyLottieAnimList.add(lottieAnim); // Add the actual lottie animation
                             hourlyDescList.add(description);
-                            // For graphing, use tempVal, not formattedTemp
+                            // For graphing, use converted tempVal
                             DateTimeFormatter timestampFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
                             Date date = java.sql.Timestamp.valueOf(startTime.format(timestampFormatter));
-                            Log.d(TAG, "Graph Point - Time: " + date + ", Temp: " + tempVal);  // Log data point
-                            if (!Double.isNaN(tempVal)) {
-                                series.appendData(new DataPoint(i, tempVal), false, 48);
+                            double tempValConverted = convertTemperatureForGraph(tempVal, tempUnit);
+                            Log.d(TAG, "Graph Point - Time: " + date + ", Temp: " + tempValConverted);  // Log data point
+                            if (!Double.isNaN(tempValConverted)) {
+                                series.appendData(new DataPoint(i, tempValConverted), false, 48);
                             }
                         }
                         weatherViewModel.setHourlyGraphData(series);
@@ -1093,6 +1134,7 @@ public class ForecastFragment extends Fragment {
                                 horizontalHourlyRecyclerView.smoothScrollToPosition(firstVisibleItemPosition[0]); // Keep smooth scrolling on contract
                             }
                         });
+                        hideLoading();
                     } catch (JSONException e) {
                         e.printStackTrace();
                         Toast.makeText(getContext(), "Error parsing hourly forecast data", Toast.LENGTH_SHORT).show();
