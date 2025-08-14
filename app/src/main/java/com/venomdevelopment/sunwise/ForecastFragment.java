@@ -861,58 +861,22 @@ public class ForecastFragment extends Fragment {
                                 }
                             }
                         }
-                        if (!dailyItems.isEmpty()) {
-                            String temp = dailyItems.get(0).toString().split(" / ")[0];
-                            String desc = dailyDescList.get(0).split(" / ")[0];
+                        if (periods.length() >= 2) {
+                            JSONObject firstPeriod = periods.getJSONObject(0);
+                            JSONObject secondPeriod = periods.getJSONObject(1);
+                            boolean isDaytime = firstPeriod.getBoolean("isDaytime");
                             String highTemp = "";
                             String lowTemp = "";
-                            
-                            // Check if we're currently in nighttime to determine if high should start from next day
-                            boolean isCurrentlyNight = !isCurrentlyDaytime();
-                            int startIndex = isCurrentlyNight ? 1 : 0; // Skip today's high if it's nighttime
-                            
-                            for (DailyForecastPair pair : forecastMap.values()) {
-                                // For each day, compare day and night temps to find the actual high and low
-                                if (pair.dayTemperature != null && pair.nightTemperature != null) {
-                                    // Extract numeric values for comparison
-                                    int dayTemp = Integer.parseInt(pair.dayTemperature.replaceAll("[^\\d.]", ""));
-                                    int nightTemp = Integer.parseInt(pair.nightTemperature.replaceAll("[^\\d.]", ""));
-                                    
-                                    // Determine which is actually higher/lower
-                                    String actualHigh = dayTemp > nightTemp ? pair.dayTemperature : pair.nightTemperature;
-                                    String actualLow = dayTemp < nightTemp ? pair.dayTemperature : pair.nightTemperature;
-                                    
-                                    // Set high temp (skip today if it's nighttime)
-                                    if (highTemp.isEmpty() || dayTemp > Integer.parseInt(highTemp.replaceAll("[^\\d.]", ""))) {
-                                        highTemp = actualHigh;
-                                    }
-                                    
-                                    // Set low temp
-                                    if (lowTemp.isEmpty() || nightTemp < Integer.parseInt(lowTemp.replaceAll("[^\\d.]", ""))) {
-                                        lowTemp = actualLow;
-                                    }
-                                } else if (pair.dayTemperature != null) {
-                                    // Only day temp available
-                                    int dayTemp = Integer.parseInt(pair.dayTemperature.replaceAll("[^\\d.]", ""));
-                                    if (highTemp.isEmpty() || dayTemp > Integer.parseInt(highTemp.replaceAll("[^\\d.]", ""))) {
-                                        highTemp = pair.dayTemperature;
-                                    }
-                                    if (lowTemp.isEmpty() || dayTemp < Integer.parseInt(lowTemp.replaceAll("[^\\d.]", ""))) {
-                                        lowTemp = pair.dayTemperature;
-                                    }
-                                } else if (pair.nightTemperature != null) {
-                                    // Only night temp available
-                                    int nightTemp = Integer.parseInt(pair.nightTemperature.replaceAll("[^\\d.]", ""));
-                                    if (highTemp.isEmpty() || nightTemp > Integer.parseInt(highTemp.replaceAll("[^\\d.]", ""))) {
-                                        highTemp = pair.nightTemperature;
-                                    }
-                                    if (lowTemp.isEmpty() || nightTemp < Integer.parseInt(lowTemp.replaceAll("[^\\d.]", ""))) {
-                                        lowTemp = pair.nightTemperature;
-                                    }
-                                }
+                            if (isDaytime) {
+                                highTemp = formatTemperature(firstPeriod.getDouble("temperature"), tempUnit, showDecimalTemp);
+                                lowTemp = formatTemperature(secondPeriod.getDouble("temperature"), tempUnit, showDecimalTemp);
+                            } else {
+                                lowTemp = formatTemperature(firstPeriod.getDouble("temperature"), tempUnit, showDecimalTemp);
+                                highTemp = "--";
                             }
                             weatherViewModel.setHighTemperature(highTemp);
                             weatherViewModel.setLowTemperature(lowTemp);
+                            String desc = firstPeriod.optString("shortForecast", "");
                             weatherViewModel.setDescription(desc);
                             hideLoading();
                         }
