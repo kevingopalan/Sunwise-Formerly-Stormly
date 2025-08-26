@@ -16,6 +16,165 @@ import java.util.Map;
  * Attempts up to 8 retries on working hosts with 10ms delays.
  */
 public class GeocodingRetryManager {
+    /**
+     * Attempts to geocode an address with retry logic and optional countrycodes filter
+     * @param context The application context
+     * @param address The address to geocode
+     * @param userAgent The User-Agent header to use
+     * @param countrycodes Optional country code filter (e.g. "us"), or null for no filter
+     * @param successCallback Callback for successful geocoding
+     * @param failureCallback Callback for failed geocoding
+     */
+    public static void geocodeWithRetry(Context context, String address, String userAgent,
+                                       String countrycodes,
+                                       GeocodingSuccessCallback successCallback,
+                                       GeocodingFailureCallback failureCallback) {
+        if (context == null) {
+            Log.w(TAG, "Context is null, cannot proceed with geocoding retry");
+            failureCallback.onFailure("Unable to complete geocoding request");
+            return;
+        }
+        String workingHostUrl = NominatimHostManager.getWorkingHostUrl();
+        if (workingHostUrl == null) {
+            NominatimHostManager.setDynamicMaxRetryAttempts(8);
+        } else {
+            NominatimHostManager.setDynamicMaxRetryAttempts(16);
+        }
+        geocodeWithRetry(context, address, userAgent, countrycodes, successCallback, failureCallback, 0);
+    }
+
+    /**
+     * Internal method for recursive retry logic with countrycodes
+     */
+    private static void geocodeWithRetry(Context context, String address, String userAgent,
+                                        String countrycodes,
+                                        GeocodingSuccessCallback successCallback,
+                                        GeocodingFailureCallback failureCallback,
+                                        int attemptCount) {
+        if (context == null) {
+            Log.w(TAG, "Context is null during retry attempt " + attemptCount + ", aborting");
+            failureCallback.onFailure("Unable to complete geocoding request");
+            return;
+        }
+        if (attemptCount >= NominatimHostManager.getDynamicMaxRetryAttempts()) {
+            Log.w(TAG, "Max retry attempts reached for address: " + address);
+            failureCallback.onFailure("Some locations couldn't be geocoded after multiple attempts");
+            return;
+        }
+        String hostUrl = NominatimHostManager.getWorkingHostUrl();
+        if (hostUrl == null) {
+            Log.d(TAG, "No known working hosts, trying all available APIs for attempt " + (attemptCount + 1));
+            hostUrl = getNextAvailableApiUrl(attemptCount);
+            if (hostUrl == null) {
+                Log.w(TAG, "No geocoding APIs available for retry");
+                failureCallback.onFailure("No geocoding services available");
+                return;
+            }
+        }
+        String encodedAddress = address.replaceAll(" ", "+");
+        final String geocodeUrl;
+        final boolean isCensus = NominatimHostManager.isCensusGeocoderUrl(hostUrl);
+        if (isCensus) {
+            geocodeUrl = hostUrl + encodedAddress + NominatimHostManager.getCensusGeocoderParams();
+        } else {
+            // Always ensure only one '?' in the URL, and all params use '&'
+            String baseUrl = hostUrl + encodedAddress;
+            String params = "format=json&addressdetails=1";
+            // If this is a Nominatim search and countrycodes is not set, add countrycodes=us unless this is a country check (countrycodes=null)
+            if (countrycodes != null && !countrycodes.isEmpty()) {
+                params += "&countrycodes=" + countrycodes;
+            } else if (!baseUrl.contains("countrycodes=us") && countrycodes != null) {
+                params += "&countrycodes=us";
+            }
+            // Remove any trailing '?' or '&' from baseUrl
+            baseUrl = baseUrl.replaceAll("[?&]+$", "");
+            geocodeUrl = baseUrl + "&" + params;
+        }
+        Log.d(TAG, "Retry attempt " + (attemptCount + 1) + " for address: " + address + " using: " + geocodeUrl);
+        Log.i(TAG, "Geocoding request URL: " + geocodeUrl);
+
+        // Log the URL for all geocoding services (Census and Nominatim)
+        if (isCensus) {
+            Log.i(TAG, "Census Geocoder request URL: " + geocodeUrl);
+        } else {
+            Log.i(TAG, "Nominatim Geocoder request URL: " + geocodeUrl);
+        }
+        if (isCensus) {
+            JsonObjectRequest jsonObjectRequest = new JsonObjectRequest
+                    (Request.Method.GET, geocodeUrl, null, response -> {
+                        try {
+                            GeocodingResponseParser.GeocodingResult result =
+                                    GeocodingResponseParser.parseGeocodingResponse(response, geocodeUrl);
+                            if (result != null) {
+                                NominatimHostManager.recordHostSuccess(geocodeUrl);
+                                successCallback.onSuccess(result);
+                            } else {
+                                NominatimHostManager.addDelay(() -> 
+                                    geocodeWithRetry(context, address, userAgent, countrycodes, successCallback, failureCallback, attemptCount + 1));
+                            }
+                        } catch (Exception e) {
+                            if (response != null && response.toString().contains("<!DOCTYPE")) {
+                                Log.e(TAG, "Received HTML response from Census geocoder on attempt " + (attemptCount + 1) + ": " + response.toString());
+                                failureCallback.onFailure("Received HTML error page from Census geocoder");
+                                return;
+                            }
+                            Log.e(TAG, "Error parsing Census response on attempt " + (attemptCount + 1) + ": " + e.getMessage());
+                            NominatimHostManager.addDelay(() -> 
+                                geocodeWithRetry(context, address, userAgent, countrycodes, successCallback, failureCallback, attemptCount + 1));
+                        }
+                    }, error -> {
+                        Log.e(TAG, "Census request failed on attempt " + (attemptCount + 1) + ": " + error.getMessage());
+                        NominatimHostManager.addDelay(() -> 
+                            geocodeWithRetry(context, address, userAgent, countrycodes, successCallback, failureCallback, attemptCount + 1));
+                    }) {
+                @Override
+                public Map<String, String> getHeaders() {
+                    Map<String, String> headers = new java.util.HashMap<>();
+                    headers.put("User-Agent", userAgent);
+                    return headers;
+                }
+            };
+            jsonObjectRequest.setShouldCache(false);
+            SunwiseApp.getInstance().getRequestQueue().add(jsonObjectRequest);
+        } else {
+            JsonArrayRequest jsonArrayRequest = new JsonArrayRequest
+                    (Request.Method.GET, geocodeUrl, null, response -> {
+                        try {
+                            GeocodingResponseParser.GeocodingResult result =
+                                    GeocodingResponseParser.parseGeocodingResponse(response, geocodeUrl);
+                            if (result != null) {
+                                NominatimHostManager.recordHostSuccess(geocodeUrl);
+                                successCallback.onSuccess(result);
+                            } else {
+                                NominatimHostManager.addDelay(() -> 
+                                    geocodeWithRetry(context, address, userAgent, countrycodes, successCallback, failureCallback, attemptCount + 1));
+                            }
+                        } catch (Exception e) {
+                            if (response != null && response.toString().contains("<!DOCTYPE")) {
+                                Log.e(TAG, "Received HTML response from Nominatim geocoder on attempt " + (attemptCount + 1) + ": " + response.toString());
+                                failureCallback.onFailure("Received HTML error page from Nominatim geocoder");
+                                return;
+                            }
+                            Log.e(TAG, "Error parsing Nominatim response on attempt " + (attemptCount + 1) + ": " + e.getMessage());
+                            NominatimHostManager.addDelay(() -> 
+                                geocodeWithRetry(context, address, userAgent, countrycodes, successCallback, failureCallback, attemptCount + 1));
+                        }
+                    }, error -> {
+                        Log.e(TAG, "Nominatim request failed on attempt " + (attemptCount + 1) + ": " + error.getMessage());
+                        NominatimHostManager.addDelay(() -> 
+                            geocodeWithRetry(context, address, userAgent, countrycodes, successCallback, failureCallback, attemptCount + 1));
+                    }) {
+                @Override
+                public Map<String, String> getHeaders() {
+                    Map<String, String> headers = new java.util.HashMap<>();
+                    headers.put("User-Agent", userAgent);
+                    return headers;
+                }
+            };
+            jsonArrayRequest.setShouldCache(false);
+            SunwiseApp.getInstance().getRequestQueue().add(jsonArrayRequest);
+        }
+    }
     
     private static final String TAG = "GeocodingRetryManager";
     

@@ -106,23 +106,43 @@ public class GeocodingResponseParser {
             return null;
         }
 
-        JSONObject firstResult = response.getJSONObject(0);
-        String lat = firstResult.optString("lat");
-        String lon = firstResult.optString("lon");
-        String displayName = firstResult.optString("display_name"); // <-- Get display_name
-
-        String countryCode = null; // <-- Initialize countryCode
-        JSONObject addressDetails = firstResult.optJSONObject("address");
+        // Find the first result with country_code == "us"
+        for (int i = 0; i < response.length(); i++) {
+            JSONObject resultObj = response.getJSONObject(i);
+            String lat = resultObj.optString("lat");
+            String lon = resultObj.optString("lon");
+            String displayName = resultObj.optString("display_name");
+            String countryCode = null;
+            JSONObject addressDetails = resultObj.optJSONObject("address");
+            if (addressDetails != null) {
+                countryCode = addressDetails.optString("country_code", null);
+            }
+            if ("us".equalsIgnoreCase(countryCode) && !lat.isEmpty() && !lon.isEmpty()) {
+                Log.d(TAG, "Parsed Nominatim: Lat=" + lat + ", Lon=" + lon + ", Name=" + displayName + ", CC=" + countryCode + ", URL=" + sourceUrl);
+                return new GeocodingResult(lat, lon, displayName, countryCode);
+            }
+        }
+        // If no US result found, fallback to result with lowest place_rank
+        int bestIdx = 0;
+        int bestRank = Integer.MAX_VALUE;
+        for (int i = 0; i < response.length(); i++) {
+            JSONObject resultObj = response.getJSONObject(i);
+            int placeRank = resultObj.optInt("place_rank", Integer.MAX_VALUE);
+            if (placeRank < bestRank) {
+                bestRank = placeRank;
+                bestIdx = i;
+            }
+        }
+        JSONObject bestResult = response.getJSONObject(bestIdx);
+        String lat = bestResult.optString("lat");
+        String lon = bestResult.optString("lon");
+        String displayName = bestResult.optString("display_name");
+        String countryCode = null;
+        JSONObject addressDetails = bestResult.optJSONObject("address");
         if (addressDetails != null) {
-            countryCode = addressDetails.optString("country_code", null); // Default to null if not found
+            countryCode = addressDetails.optString("country_code", null);
         }
-
-        if (lat.isEmpty() || lon.isEmpty()) {
-            Log.w(TAG, "Nominatim response missing lat/lon. DisplayName: " + displayName + ", URL: " + sourceUrl);
-            return null; // Or handle as a partial result if needed
-        }
-
-        Log.d(TAG, "Parsed Nominatim: Lat=" + lat + ", Lon=" + lon + ", Name=" + displayName + ", CC=" + countryCode);
+        Log.d(TAG, "No US result found. Parsed Nominatim (lowest place_rank): Lat=" + lat + ", Lon=" + lon + ", Name=" + displayName + ", CC=" + countryCode + ", place_rank=" + bestRank + ", URL=" + sourceUrl);
         return new GeocodingResult(lat, lon, displayName, countryCode);
     }
 

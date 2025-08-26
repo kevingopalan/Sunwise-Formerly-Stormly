@@ -355,102 +355,75 @@ public class ForecastFragment extends Fragment {
     private void fetchGeocodingData(String address) {
         if (processedGeocodeAddresses.contains(address)) return;
         showLoading();
-        // Encode the address for the URL
         String encodedAddress = address.replaceAll(" ", "+");
         String baseUrl = NominatimHostManager.getRandomSearchUrl() + encodedAddress;
-        final String geocodeUrl;
         final boolean isCensus = NominatimHostManager.isCensusGeocoderUrl(baseUrl);
-        if (isCensus) {
-            geocodeUrl = baseUrl + NominatimHostManager.getCensusGeocoderParams();
-        } else {
-            geocodeUrl = baseUrl + "&format=json&addressdetails=1";
-        }
+        final String geocodeUrl = isCensus
+            ? baseUrl + NominatimHostManager.getCensusGeocoderParams()
+            : baseUrl + "&format=json&addressdetails=1&countrycodes=us";
+
+        // Use a single method for both requests, reduce duplicate logic
+        Runnable onFallback = () -> { if (isAdded()) fetchGeocodingDataWithFallback(address); };
+        java.util.Map<String, String> headers = new java.util.HashMap<>();
+        headers.put("User-Agent", USER_AGENT);
+        headers.put("Accept", "application/geo+json,application/json");
+        headers.put("Cache-Control", "no-cache, no-store, must-revalidate");
+        headers.put("Pragma", "no-cache");
+        headers.put("Expires", "0");
 
         if (isCensus) {
-            // Use JsonObjectRequest for Census
             JsonObjectRequest jsonObjectRequest = new JsonObjectRequest
-                    (Request.Method.GET, geocodeUrl, null, response -> {
-                        try {
-                            GeocodingResponseParser.GeocodingResult result =
-                                    GeocodingResponseParser.parseGeocodingResponse(response, geocodeUrl);
-                            if (result != null) {
-                                NominatimHostManager.recordHostSuccess(geocodeUrl);
-                                String pointsUrl = BASE_URL_POINTS + result.getLatitude() + "," + result.getLongitude();
-                                updateLocationDisplay(address);
-                                processedGeocodeAddresses.add(address);
-                                fetchWeatherData(pointsUrl);
-                            } else {
-                                NominatimHostManager.addDelay(() -> {
-                                    if (isAdded()) fetchGeocodingDataWithFallback(address);
-                                });
-                            }
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                            NominatimHostManager.addDelay(() -> {
-                                if (isAdded()) fetchGeocodingDataWithFallback(address);
-                            });
+                (Request.Method.GET, geocodeUrl, null, response -> {
+                    try {
+                        GeocodingResponseParser.GeocodingResult result =
+                            GeocodingResponseParser.parseGeocodingResponse(response, geocodeUrl);
+                        if (result != null) {
+                            NominatimHostManager.recordHostSuccess(geocodeUrl);
+                            String pointsUrl = BASE_URL_POINTS + result.getLatitude() + "," + result.getLongitude();
+                            updateLocationDisplay(address);
+                            processedGeocodeAddresses.add(address);
+                            fetchWeatherData(pointsUrl);
+                        } else {
+                            NominatimHostManager.addDelay(onFallback);
                         }
-                    }, error -> {
-                        Log.e(TAG, "Error fetching geocoding data from Census Geocoder: " + error.getMessage());
-                        NominatimHostManager.addDelay(() -> {
-                            if (isAdded()) fetchGeocodingDataWithFallback(address);
-                        });
-                    }) {
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        NominatimHostManager.addDelay(onFallback);
+                    }
+                }, error -> {
+                    Log.e(TAG, "Error fetching geocoding data from Census Geocoder: " + error.getMessage());
+                    NominatimHostManager.addDelay(onFallback);
+                }) {
                 @Override
-                public java.util.Map<String, String> getHeaders() {
-                    java.util.Map<String, String> headers = new java.util.HashMap<>();
-                    headers.put("User-Agent", USER_AGENT);
-                    headers.put("Accept", "application/geo+json,application/json");
-                    headers.put("Cache-Control", "no-cache, no-store, must-revalidate");
-                    headers.put("Pragma", "no-cache");
-                    headers.put("Expires", "0");
-                    Log.d(TAG, "Request headers: " + headers.toString());
-                    return headers;
-                }
+                public java.util.Map<String, String> getHeaders() { return headers; }
             };
             requestQueue.getCache().clear();
             if (isAdded()) requestQueue.add(jsonObjectRequest);
         } else {
-            // Use JsonArrayRequest for Nominatim
-        JsonArrayRequest jsonArrayRequest = new JsonArrayRequest
-                    (Request.Method.GET, geocodeUrl, null, response -> {
-                        try {
-                            GeocodingResponseParser.GeocodingResult result =
-                                    GeocodingResponseParser.parseGeocodingResponse(response, geocodeUrl);
-                            if (result != null) {
-                                NominatimHostManager.recordHostSuccess(geocodeUrl);
-                                String pointsUrl = BASE_URL_POINTS + result.getLatitude() + "," + result.getLongitude();
-                                updateLocationDisplay(address);
-                                processedGeocodeAddresses.add(address);
-                                fetchWeatherData(pointsUrl);
-                            } else {
-                                NominatimHostManager.addDelay(() -> {
-                                    if (isAdded()) fetchGeocodingDataWithFallback(address);
-                                });
-                            }
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                            NominatimHostManager.addDelay(() -> {
-                                if (isAdded()) fetchGeocodingDataWithFallback(address);
-                            });
+            JsonArrayRequest jsonArrayRequest = new JsonArrayRequest
+                (Request.Method.GET, geocodeUrl, null, response -> {
+                    try {
+                        GeocodingResponseParser.GeocodingResult result =
+                            GeocodingResponseParser.parseGeocodingResponse(response, geocodeUrl);
+                        if (result != null) {
+                            NominatimHostManager.recordHostSuccess(geocodeUrl);
+                            String pointsUrl = BASE_URL_POINTS + result.getLatitude() + "," + result.getLongitude();
+                            updateLocationDisplay(address);
+                            processedGeocodeAddresses.add(address);
+                            fetchWeatherData(pointsUrl);
+                        } else {
+                            NominatimHostManager.addDelay(onFallback);
                         }
-                    }, error -> {
-                        Log.e(TAG, "Error fetching geocoding data from primary host: " + error.getMessage());
-                        NominatimHostManager.addDelay(() -> {
-                            if (isAdded()) fetchGeocodingDataWithFallback(address);
-                        });
-                    }) {
-                    @Override
-                public java.util.Map<String, String> getHeaders() {
-                    java.util.Map<String, String> headers = new java.util.HashMap<>();
-                    headers.put("User-Agent", USER_AGENT);
-                    headers.put("Accept", "application/geo+json,application/json");
-                    headers.put("Cache-Control", "no-cache, no-store, must-revalidate");
-                    headers.put("Pragma", "no-cache");
-                    headers.put("Expires", "0");
-                    Log.d(TAG, "Request headers: " + headers.toString());
-                    return headers;
-                }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        NominatimHostManager.addDelay(onFallback);
+                    }
+                }, error -> {
+                    Log.e(TAG, "Error fetching geocoding data from Nominatim: " + error.getMessage());
+                    NominatimHostManager.addDelay(onFallback);
+                }) {
+                @Override
+                public java.util.Map<String, String> getHeaders() { return headers; }
             };
             requestQueue.getCache().clear();
             if (isAdded()) requestQueue.add(jsonArrayRequest);
@@ -462,7 +435,12 @@ public class ForecastFragment extends Fragment {
         if (!isAdded()) return;
         // Encode the address for the URL
         String encodedAddress = address.replaceAll(" ", "+");
-        String geocodeUrl = NominatimHostManager.getFallbackSearchUrl() + encodedAddress + "&format=json&addressdetails=1";
+        String baseUrl = NominatimHostManager.getFallbackSearchUrl() + encodedAddress;
+        String params = "format=json&addressdetails=1";
+        if (!baseUrl.contains("countrycodes=us")) {
+            params += "&countrycodes=us";
+        }
+        String geocodeUrl = baseUrl + "&" + params;
 
         JsonArrayRequest jsonArrayRequest = new JsonArrayRequest
                 (Request.Method.GET, geocodeUrl, null, response -> {

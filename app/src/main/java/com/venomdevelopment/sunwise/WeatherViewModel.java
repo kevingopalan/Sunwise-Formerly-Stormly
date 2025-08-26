@@ -243,7 +243,12 @@ public class WeatherViewModel extends ViewModel {
         if (isCensus) {
             geocodeUrl = baseUrl + NominatimHostManager.getCensusGeocoderParams();
         } else {
-            geocodeUrl = baseUrl + "&format=json&addressdetails=1";
+            String params = "format=json&addressdetails=1";
+            // Only add countrycodes=us if not present and not a country check
+            if (!baseUrl.contains("countrycodes=us")) {
+                params += "&countrycodes=us";
+            }
+            geocodeUrl = baseUrl + "&" + params;
         }
         if (isCensus) {
             JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(Request.Method.GET, geocodeUrl, null, response -> {

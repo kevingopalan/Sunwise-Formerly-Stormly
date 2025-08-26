@@ -18,26 +18,12 @@
         android:maxLines="1"
         android:textSize="16sp"
         android:textColor="?attr/colorOnBackground"
-        tools:text="City, State" />
+        tools:text="No location permission" />
 
-    <com.airbnb.lottie.LottieAnimationView
-        android:id="@+id/locationAnimationView"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_marginEnd="8dp"
-        app:lottie_autoPlay="true"
-        app:lottie_loop="true"
-        app:lottie_rawRes="@raw/not_available"
-        tools:visibility="visible" />
+    <ImageView
+        android:layout_height="32dp"
+        android:layout_width="32dp"
+        android:src = "@drawable/outline_wrong_location_24"/>
 
-
-    <TextView
-        android:id="@+id/locationTemperatureTextView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:textColor="?attr/colorOnBackground"
-        android:textSize="24sp"
-        tools:text="--" />
 
 </LinearLayout>

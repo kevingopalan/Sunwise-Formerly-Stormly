@@ -55,8 +55,9 @@
                     android:paddingEnd="20dp"
                     android:layout_gravity="center_vertical"
                     android:drawableEnd="@drawable/go" />
-
             </LinearLayout>
+
+            <!-- suggestionsRecyclerView moved outside LinearLayout for overlap effect -->
 
             <TextView
                 android:layout_width="wrap_content"
@@ -122,8 +123,23 @@
                 app:lottie_rawRes="@raw/partly_cloudy_day" />
 
         </LinearLayout>
+
     </androidx.core.widget.NestedScrollView>
 
+    <!-- Overlapping suggestions dropdown -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/suggestionsRecyclerView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        android:background="@color/md_theme_surfaceContainer"
+        android:elevation="8dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="80dp"
+        android:overScrollMode="never" />
+
+    <!-- Ensure progressBar overlay is last so it appears above all other views -->
     <LinearLayout
         android:id="@+id/progressBar"
         android:layout_width="match_parent"
