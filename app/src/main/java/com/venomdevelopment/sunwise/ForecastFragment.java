@@ -39,6 +39,9 @@ import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonArrayRequest;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
+import com.github.mikephil.charting.charts.BarChart;
+import com.github.mikephil.charting.components.AxisBase;
+import com.github.mikephil.charting.formatter.IAxisValueFormatter;
 import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.AdView;
 import com.google.android.gms.ads.LoadAdError;
@@ -66,6 +69,7 @@ import com.jjoe64.graphview.GraphView;
 import com.jjoe64.graphview.GridLabelRenderer;
 import com.jjoe64.graphview.series.DataPoint;
 import com.jjoe64.graphview.series.LineGraphSeries;
+import com.github.mikephil.charting.*;
 import android.graphics.Paint;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
@@ -110,6 +114,7 @@ public class ForecastFragment extends Fragment {
     private AdView forecastAdView;
     private Handler reloadHandler = new Handler(Looper.getMainLooper());
     private FloatingActionButton reloadFab;
+    private BarChart hourlyBarChart;
 
     public String getPreferenceValue() {
         return sunwisePrefs.getString("address", "");
@@ -140,7 +145,12 @@ public class ForecastFragment extends Fragment {
         progressBar = view.findViewById(R.id.progressBar);
         forecastAdView = view.findViewById(R.id.forecast_ad);
         reloadFab = view.findViewById(R.id.reloadFab);
-
+        hourlyBarChart = view.findViewById(R.id.hourlyBarGraph);
+        hourlyBarChart.setDrawBarShadow(false);
+        hourlyBarChart.setDrawValueAboveBar(true);
+        hourlyBarChart.getDescription().setEnabled(false);
+        hourlyBarChart.setDrawGridBackground(false);
+        hourlyBarChart.setPinchZoom(false);
         // Initialize ViewModel
         weatherViewModel = new ViewModelProvider(requireActivity()).get(WeatherViewModel.class);
 
@@ -280,8 +290,9 @@ public class ForecastFragment extends Fragment {
         hourlyGraphViewForecast.getViewport().setXAxisBoundsManual(true);
         dailyGraphViewForecast.getViewport().setXAxisBoundsManual(true);
         hourlyGraphViewForecast.getViewport().setYAxisBoundsManual(false);
+        hourlyGraphViewForecast.getViewport().setScrollable(true);
         hourlyGraphViewForecast.getViewport().setMinX(0);
-        hourlyGraphViewForecast.getViewport().setMaxX(23);
+        hourlyGraphViewForecast.getViewport().setMaxX(6);
         dailyGraphViewForecast.getViewport().setMinX(0);
         dailyGraphViewForecast.getViewport().setMaxX(6);
         setLabelTypeface(getContext(), hourlyGraphViewForecast, R.font.montsemibold);
@@ -660,15 +671,25 @@ public class ForecastFragment extends Fragment {
                         LineGraphSeries<DataPoint> daySeries = new LineGraphSeries<>();
                         LineGraphSeries<DataPoint> nightSeries = new LineGraphSeries<>();
                         boolean isDaytimeInitial = periods.getJSONObject(0).getBoolean("isDaytime");
-
+                        JSONObject dayPeriod;
+                        JSONObject nightPeriod;
                         for (int i = 0; i < 7; i++) {
-                            JSONObject dayPeriod = periods.getJSONObject(2 * i);
-                            JSONObject nightPeriod = periods.getJSONObject(2 * i + 1);
+                            if (isDaytimeInitial) {
+                                dayPeriod = periods.getJSONObject(2 * i);
+                                nightPeriod = periods.getJSONObject(2 * i + 1);
+                            } else {
+                                dayPeriod = periods.getJSONObject(2 * i + 1);
+                                nightPeriod = periods.getJSONObject(2 * i);
+                            }
                             double dayTemp = dayPeriod.getDouble("temperature");
                             double nightTemp = nightPeriod.getDouble("temperature");
                             double dayTempConverted = convertTemperatureForGraph(dayTemp, tempUnit);
                             double nightTempConverted = convertTemperatureForGraph(nightTemp, tempUnit);
-                            daySeries.appendData(new DataPoint(i, dayTempConverted), false, 7);
+                            if (isDaytimeInitial) {
+                                daySeries.appendData(new DataPoint(i, dayTempConverted), false, 7);
+                            } else {
+                                daySeries.appendData(new DataPoint(i + 1, dayTempConverted), false, 7);
+                            }
                             nightSeries.appendData(new DataPoint(i, nightTempConverted), false, 7);
                         }
                         weatherViewModel.setDailyGraphDataDay(daySeries);
@@ -691,12 +712,11 @@ public class ForecastFragment extends Fragment {
                             boolean isDaytime = current.getBoolean("isDaytime");
                             
                             // Use the full name as the key, not just the first word
-                            String periodKey = name;
                             DailyForecastPair pair;
-                            if (!forecastMap.containsKey(periodKey)) {
-                                forecastMap.put(periodKey, new DailyForecastPair());
+                            if (!forecastMap.containsKey(name)) {
+                                forecastMap.put(name, new DailyForecastPair());
                             }
-                            pair = forecastMap.get(periodKey);
+                            pair = forecastMap.get(name);
                             double tempVal = current.optDouble("temperature", Double.NaN);
                             String temperature = Double.isNaN(tempVal) ? "--" : formatTemperature(tempVal, tempUnit, showDecimalTemp);
                             String description = current.optString("shortForecast");
@@ -707,35 +727,34 @@ public class ForecastFragment extends Fragment {
                             }
                             // Use icon URL from API instead
                             String iconUrl = current.optString("icon", "");
-                            String icon = iconUrl;
-                            String lottieAnim = iconUrl; // Use icon URL for lottie animation
-                            String prefix = isDaytime ? "_day" : "_night";
+                            // Use icon URL for lottie animation
+                            assert pair != null;
                             pair.time = name.replace("This", "").trim();
                             if (name.contains("Afternoon")) {
                                 pair.afternoonTemperature = temperature;
-                                pair.afternoonIcon = icon;
-                                pair.afternoonLottieAnim = lottieAnim;
+                                pair.afternoonIcon = iconUrl;
+                                pair.afternoonLottieAnim = iconUrl;
                                 pair.afternoonDescription = description;
                                 pair.afternoonPrecipitation = precipitationProbability;
                                 pair.afternoonHumidity = humidityValue;
                             } else if (name.contains("Tonight")) {
                                 pair.tonightTemperature = temperature;
-                                pair.tonightIcon = icon;
-                                pair.tonightLottieAnim = lottieAnim;
+                                pair.tonightIcon = iconUrl;
+                                pair.tonightLottieAnim = iconUrl;
                                 pair.tonightDescription = description;
                                 pair.tonightPrecipitation = precipitationProbability;
                                 pair.tonightHumidity = humidityValue;
                             } else if (isDaytime && !name.contains("Night")) {
                                 pair.dayTemperature = temperature;
-                                pair.dayIcon = icon;
-                                pair.dayLottieAnim = lottieAnim;
+                                pair.dayIcon = iconUrl;
+                                pair.dayLottieAnim = iconUrl;
                                 pair.dayDescription = description;
                                 pair.dayPrecipitation = precipitationProbability;
                                 pair.dayHumidity = humidityValue;
                             } else if (!isDaytime) {
                                 pair.nightTemperature = temperature;
-                                pair.nightIcon = icon;
-                                pair.nightLottieAnim = lottieAnim;
+                                pair.nightIcon = iconUrl;
+                                pair.nightLottieAnim = iconUrl;
                                 pair.nightDescription = description;
                                 pair.nightPrecipitation = precipitationProbability;
                                 pair.nightHumidity = humidityValue;
@@ -1373,7 +1392,7 @@ public class ForecastFragment extends Fragment {
     private boolean isCurrentlyDaytime() {
         java.time.LocalTime now = java.time.LocalTime.now();
         int currentHour = now.getHour();
-        
+
         // Consider 5 AM to 8 PM as daytime (15 hours of daylight)
         // This is a reasonable approximation for most locations
         return currentHour >= 5 && currentHour < 20;

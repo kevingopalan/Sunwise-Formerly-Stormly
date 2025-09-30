@@ -5,14 +5,14 @@ plugins {
 
 android {
     namespace 'com.venomdevelopment.sunwise'
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         applicationId "com.venomdevelopment.sunwise"
         minSdk 26
         targetSdk 35
-        versionCode 10
-        versionName "1.0-rc8-tc"
+        versionCode 11
+        versionName "1.0-pre1"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -34,7 +34,6 @@ android {
         jvmTarget = '1.8'
     }
 }
-
 dependencies {
     implementation libs.activity
     //noinspection UseTomlInstead
@@ -55,7 +54,7 @@ dependencies {
     //noinspection UseTomlInstead
     implementation 'androidx.recyclerview:recyclerview:1.4.0'
     //noinspection UseTomlInstead
-    implementation 'androidx.core:core-ktx:1.16.0'
+    implementation 'androidx.core:core-ktx:1.17.0'
     //noinspection UseTomlInstead
     implementation 'com.jjoe64:graphview:4.2.2'
     //noinspection UseTomlInstead
@@ -67,6 +66,8 @@ dependencies {
     // optional - RxJava3 support
     //noinspection UseTomlInstead
     implementation "androidx.datastore:datastore-preferences-rxjava3:1.1.7"
+
+    implementation libs.mpandroidchart
     implementation libs.lottie
     implementation libs.preference
     implementation libs.legacy.support.v4
