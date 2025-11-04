@@ -13,3 +13,11 @@
 .externalNativeBuild
 .cxx
 local.properties
+/app/release/app-release.aab
+/.idea/AugmentWebviewStateStore.xml
+/.idea/deviceManager.xml
+/.kotlin/errors/errors-1755006775278.log
+/.kotlin/errors/errors-1756160510664.log
+/.kotlin/errors/errors-1756160511536.log
+/.kotlin/sessions/kotlin-compiler-10064674644772631080.salive
+/.kotlin/sessions/kotlin-compiler-17719326740560273687.salive
