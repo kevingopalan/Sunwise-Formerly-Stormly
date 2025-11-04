@@ -123,7 +123,7 @@ public class MainActivity extends AppCompatActivity
             }
         }
         loadInterstitialAd();
-        // showTesterDialog();
+        showTesterDialog();
     }
 
     private void setupAdView() {
@@ -355,17 +355,16 @@ public class MainActivity extends AppCompatActivity
         drawerToggle.onConfigurationChanged(newConfig);
     }
 
-    private void showTesterDialog() {// Check if the fragment is still attached
+    private void showTesterDialog() {
         new AlertDialog.Builder(MainActivity.this)
-                .setTitle("Hello, Tester!")
-                .setMessage("Thank you for helping to test this app! You are some of the first people to try this, and any feedback you submit is highly appreciated. \n \n" +
+                .setTitle("Hey there!")
+                .setMessage("Thank you for signing up for our closed test! You are one of the first people to use this software, and any feedback you submit is highly appreciated. \n \n" +
                         "Here are some things you may want to know: \n \n" +
                         "- This app is going to be targeted to the US only during production/open testing. This is due to a limitation with the APIs we use, which include the National Weather Service. \n \n" +
-                        "- This app might be buggy (well, of course), feel free to submit feedback \n \n" +
+                        "- This app will have bugs, so please leave feedback, it helps improve Sunwise and brings this app one step closer to production. \n \n" +
                         "- You are signing up for a closed test, and things can change at any time. What you see here is a pre-release version of Sunwise and is not the final product.\n \n" +
-                        "- We would very much appreciate you keeping this installed on your phone until production, Google play wants 12 testers for 14 days to qualify for production. \n \n" +
-                        "That's all you need to know, happy testing! \n \n" +
-                        "(This dialog will show every time you open the app, sorry about that)")
+                        "- Please keep this app installed and give constructive feedback on Google Play. Don't feel like you have to be super nice and sugarcoat all your feedback, being more critical helps improve this app. \n \n" +
+                        "Thank you for taking the time to read this message, have a nice day.")
                 .setPositiveButton(android.R.string.ok, (dialog, which) -> dialog.dismiss())
                 .setIcon(android.R.drawable.ic_dialog_info)
                 .show();

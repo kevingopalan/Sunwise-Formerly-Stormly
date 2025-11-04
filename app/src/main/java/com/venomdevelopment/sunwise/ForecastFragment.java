@@ -1,13 +1,8 @@
 package com.venomdevelopment.sunwise;
 
-import static com.venomdevelopment.sunwise.GraphViewUtils.setLabelTypeface;
-import static com.venomdevelopment.sunwise.GraphViewUtils.setTitleTypeface;
-
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.content.res.Resources;
 import android.graphics.Color;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -18,7 +13,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.LinearLayout;
@@ -38,10 +32,23 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonArrayRequest;
 import com.android.volley.toolbox.JsonObjectRequest;
-import com.android.volley.toolbox.Volley;
 import com.github.mikephil.charting.charts.BarChart;
 import com.github.mikephil.charting.components.AxisBase;
-import com.github.mikephil.charting.formatter.IAxisValueFormatter;
+import com.github.mikephil.charting.data.BarData;
+import com.github.mikephil.charting.data.BarDataSet;
+import com.github.mikephil.charting.data.BarEntry;
+import com.github.mikephil.charting.components.XAxis;
+import com.github.mikephil.charting.components.YAxis;
+import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
+import com.github.mikephil.charting.renderer.BarChartRenderer;
+import com.github.mikephil.charting.utils.Transformer;
+import com.github.mikephil.charting.interfaces.datasets.IBarDataSet;
+import com.github.mikephil.charting.animation.ChartAnimator;
+import com.github.mikephil.charting.utils.ViewPortHandler;
+import android.graphics.RectF;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import com.github.mikephil.charting.utils.Utils;
 import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.AdView;
 import com.google.android.gms.ads.LoadAdError;
@@ -59,21 +66,11 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.Date;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeParseException;
-import java.time.format.DateTimeFormatter; // Ensure this is imported
+// Ensure this is imported
 
-import com.jjoe64.graphview.GraphView;
-import com.jjoe64.graphview.GridLabelRenderer;
-import com.jjoe64.graphview.series.DataPoint;
-import com.jjoe64.graphview.series.LineGraphSeries;
-import com.github.mikephil.charting.*;
-import android.graphics.Paint;
-import java.math.RoundingMode;
-import java.text.DecimalFormat;
+// Removed GraphView imports (GraphView has been replaced by MPAndroidChart BarChart)
 import androidx.core.content.ContextCompat;
+import androidx.core.content.res.ResourcesCompat;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import java.time.LocalDate;
 import android.util.TypedValue;
@@ -90,14 +87,11 @@ public class ForecastFragment extends Fragment {
     private TextView lowTempTextForecast;
     private TextView descTextForecast, humidityTextViewForecast, windTextViewForecast, precipitationTextViewForecast;
     private TextView locationDisplay;
-    private Button saveLocationButton;
     private RecyclerView dailyRecyclerView;
     private RecyclerView horizontalHourlyRecyclerView;
     private HorizontalHourlyForecastAdapter horizontalHourlyAdapter;
     private WeatherViewModel weatherViewModel;
-    GraphView hourlyGraphViewForecast, dailyGraphViewForecast;
-    private String currentTemperature = "";
-    private String dailyHighTemperature = "";
+    // GraphView removed; MPAndroidChart BarCharts are used instead
 
     public static final String myPref = "addressPref";
 
@@ -105,7 +99,6 @@ public class ForecastFragment extends Fragment {
 
     private String tempUnit = "us";
     private String windUnit = "mph";
-    private boolean showDecimalTemp = false;
     private boolean use24HourFormat = false;
     private SharedPreferences sunwisePrefs;
 
@@ -115,6 +108,7 @@ public class ForecastFragment extends Fragment {
     private Handler reloadHandler = new Handler(Looper.getMainLooper());
     private FloatingActionButton reloadFab;
     private BarChart hourlyBarChart;
+    private BarChart dailyBarChart;
 
     public String getPreferenceValue() {
         return sunwisePrefs.getString("address", "");
@@ -137,20 +131,29 @@ public class ForecastFragment extends Fragment {
         windTextViewForecast = view.findViewById(R.id.wind);
         precipitationTextViewForecast = view.findViewById(R.id.precipitation);
         locationDisplay = view.findViewById(R.id.locationDisplay);
-        saveLocationButton = view.findViewById(R.id.saveLocationButton);
+        Button saveLocationButton = view.findViewById(R.id.saveLocationButton);
         dailyRecyclerView = view.findViewById(R.id.dailyRecyclerView);
         horizontalHourlyRecyclerView = view.findViewById(R.id.hourlyRecyclerView);
-        hourlyGraphViewForecast = view.findViewById(R.id.hrGraphContent);
-        dailyGraphViewForecast = view.findViewById(R.id.dayGraphContent);
+    // GraphView elements removed from layout; BarCharts are used instead
         progressBar = view.findViewById(R.id.progressBar);
         forecastAdView = view.findViewById(R.id.forecast_ad);
         reloadFab = view.findViewById(R.id.reloadFab);
         hourlyBarChart = view.findViewById(R.id.hourlyBarGraph);
+        dailyBarChart = view.findViewById(R.id.dailyBarGraph);
         hourlyBarChart.setDrawBarShadow(false);
         hourlyBarChart.setDrawValueAboveBar(true);
         hourlyBarChart.getDescription().setEnabled(false);
         hourlyBarChart.setDrawGridBackground(false);
         hourlyBarChart.setPinchZoom(false);
+        if (dailyBarChart != null) {
+            dailyBarChart.setDrawBarShadow(false);
+            dailyBarChart.setDrawValueAboveBar(false);
+            dailyBarChart.getDescription().setEnabled(false);
+            dailyBarChart.setDrawGridBackground(false);
+            dailyBarChart.setPinchZoom(false);
+            dailyBarChart.setScaleEnabled(false);
+            dailyBarChart.getLegend().setEnabled(false);
+        }
         // Initialize ViewModel
         weatherViewModel = new ViewModelProvider(requireActivity()).get(WeatherViewModel.class);
 
@@ -161,7 +164,6 @@ public class ForecastFragment extends Fragment {
     sunwisePrefs = requireActivity().getSharedPreferences("SunwiseSettings", Context.MODE_PRIVATE);
     tempUnit = sunwisePrefs.getString("unit", "us");
     windUnit = sunwisePrefs.getString("wind_unit", "mph");
-    showDecimalTemp = sunwisePrefs.getBoolean("show_decimal_temp", false);
     use24HourFormat = sunwisePrefs.getBoolean("use_24_hour_format", false);
 
         // Setup RecyclerViews
@@ -263,8 +265,8 @@ public class ForecastFragment extends Fragment {
             }
         });
 
-        // Setup graphs with proper styling and fonts
-        setupGraphs();
+    // Setup charts with proper styling and fonts
+    setupGraphs();
 
         // Get location from arguments or preferences
         Bundle args = getArguments();
@@ -284,83 +286,9 @@ public class ForecastFragment extends Fragment {
     }
 
     private void setupGraphs() {
-        // Setup graphs with proper styling and fonts
-        hourlyGraphViewForecast.getGridLabelRenderer().setGridStyle(GridLabelRenderer.GridStyle.NONE);
-        dailyGraphViewForecast.getGridLabelRenderer().setGridStyle(GridLabelRenderer.GridStyle.NONE);
-        hourlyGraphViewForecast.getViewport().setXAxisBoundsManual(true);
-        dailyGraphViewForecast.getViewport().setXAxisBoundsManual(true);
-        hourlyGraphViewForecast.getViewport().setYAxisBoundsManual(false);
-        hourlyGraphViewForecast.getViewport().setScrollable(true);
-        hourlyGraphViewForecast.getViewport().setMinX(0);
-        hourlyGraphViewForecast.getViewport().setMaxX(6);
-        dailyGraphViewForecast.getViewport().setMinX(0);
-        dailyGraphViewForecast.getViewport().setMaxX(6);
-        setLabelTypeface(getContext(), hourlyGraphViewForecast, R.font.montsemibold);
-        setLabelTypeface(getContext(), dailyGraphViewForecast, R.font.montsemibold);
-        setTitleTypeface(getContext(), hourlyGraphViewForecast, R.font.montsemibold);
-        setTitleTypeface(getContext(), dailyGraphViewForecast, R.font.montsemibold);
+        // Old GraphView removed; MPAndroidChart styling is applied where charts are configured.
 
-        // Observe graph data
-        weatherViewModel.getHourlyGraphData().observe(getViewLifecycleOwner(), series -> {
-            if (series != null && hourlyGraphViewForecast != null) {
-                hourlyGraphViewForecast.removeAllSeries();
-                int colorOnSurface = ContextCompat.getColor(requireContext(), android.R.color.white); // fallback
-                if (getContext() != null) {
-                    TypedValue typedValue = new TypedValue();
-                    getContext().getTheme().resolveAttribute(com.google.android.material.R.attr.colorOnSurface, typedValue, true);
-                    colorOnSurface = typedValue.data;
-                }
-                series.setColor(colorOnSurface);
-                series.setDrawDataPoints(true);
-                series.setDataPointsRadius(8);
-                series.setThickness(3);
-                hourlyGraphViewForecast.addSeries(series);
-            }
-        });
-
-        // Observe day and night series independently and always clear before adding
-        weatherViewModel.getDailyGraphDataDay().observe(getViewLifecycleOwner(), daySeries -> {
-            if (dailyGraphViewForecast != null) {
-                dailyGraphViewForecast.removeAllSeries();
-                if (daySeries != null) {
-                    daySeries.setColor(getResources().getColor(android.R.color.holo_red_light));
-                    daySeries.setDrawDataPoints(true);
-                    daySeries.setDataPointsRadius(8);
-                    daySeries.setThickness(3);
-                    dailyGraphViewForecast.addSeries(daySeries);
-                }
-                // Add night series if it exists
-                LineGraphSeries<DataPoint> nightSeries = weatherViewModel.getDailyGraphDataNight().getValue();
-                if (nightSeries != null) {
-                    nightSeries.setColor(getResources().getColor(android.R.color.holo_blue_light));
-                    nightSeries.setDrawDataPoints(true);
-                    nightSeries.setDataPointsRadius(8);
-                    nightSeries.setThickness(3);
-                    dailyGraphViewForecast.addSeries(nightSeries);
-                }
-            }
-        });
-        weatherViewModel.getDailyGraphDataNight().observe(getViewLifecycleOwner(), nightSeries -> {
-            if (dailyGraphViewForecast != null) {
-                dailyGraphViewForecast.removeAllSeries();
-                // Add day series if it exists
-                LineGraphSeries<DataPoint> daySeries = weatherViewModel.getDailyGraphDataDay().getValue();
-                if (daySeries != null) {
-                    daySeries.setColor(getResources().getColor(android.R.color.holo_red_light));
-                    daySeries.setDrawDataPoints(true);
-                    daySeries.setDataPointsRadius(8);
-                    daySeries.setThickness(3);
-                    dailyGraphViewForecast.addSeries(daySeries);
-                }
-                if (nightSeries != null) {
-                    nightSeries.setColor(getResources().getColor(android.R.color.holo_blue_light));
-                    nightSeries.setDrawDataPoints(true);
-                    nightSeries.setDataPointsRadius(8);
-                    nightSeries.setThickness(3);
-                    dailyGraphViewForecast.addSeries(nightSeries);
-                }
-            }
-        });
+        // GraphView observers removed (GraphView UI replaced by MPAndroidChart BarCharts).
     }
 
     private void fetchGeocodingData(String address) {
@@ -378,7 +306,7 @@ public class ForecastFragment extends Fragment {
         java.util.Map<String, String> headers = new java.util.HashMap<>();
         headers.put("User-Agent", USER_AGENT);
         headers.put("Accept", "application/geo+json,application/json");
-        headers.put("Cache-Control", "no-cache, no-store, must-revalidate");
+        headers.put("Cache-Control", "no-cache");
         headers.put("Pragma", "no-cache");
         headers.put("Expires", "0");
 
@@ -408,6 +336,12 @@ public class ForecastFragment extends Fragment {
                 @Override
                 public java.util.Map<String, String> getHeaders() { return headers; }
             };
+            // Prevent Volley from caching geocoding responses and clear any existing cache for this URL
+            try {
+                jsonObjectRequest.setShouldCache(false);
+                if (requestQueue != null && requestQueue.getCache() != null) requestQueue.getCache().remove(geocodeUrl);
+            } catch (Exception ignored) {}
+            assert requestQueue != null;
             requestQueue.getCache().clear();
             if (isAdded()) requestQueue.add(jsonObjectRequest);
         } else {
@@ -436,6 +370,10 @@ public class ForecastFragment extends Fragment {
                 @Override
                 public java.util.Map<String, String> getHeaders() { return headers; }
             };
+            try {
+                jsonArrayRequest.setShouldCache(false);
+                if (requestQueue != null && requestQueue.getCache() != null) requestQueue.getCache().remove(geocodeUrl);
+            } catch (Exception ignored) {}
             requestQueue.getCache().clear();
             if (isAdded()) requestQueue.add(jsonArrayRequest);
         }
@@ -492,13 +430,17 @@ public class ForecastFragment extends Fragment {
                 java.util.Map<String, String> headers = new java.util.HashMap<>();
                 headers.put("User-Agent", USER_AGENT);
                 headers.put("Accept", "application/geo+json,application/json");
-                headers.put("Cache-Control", "no-cache, no-store, must-revalidate");
+                headers.put("Cache-Control", "no-cache");
                 headers.put("Pragma", "no-cache");
                 headers.put("Expires", "0");
                 Log.d(TAG, "Request headers: " + headers.toString());
                 return headers;
             }
         };
+        try {
+            jsonArrayRequest.setShouldCache(false);
+            if (requestQueue != null && requestQueue.getCache() != null) requestQueue.getCache().remove(geocodeUrl);
+        } catch (Exception ignored) {}
         requestQueue.getCache().clear();
         if (isAdded()) requestQueue.add(jsonArrayRequest);
     }
@@ -542,13 +484,17 @@ public class ForecastFragment extends Fragment {
                 java.util.Map<String, String> headers = new java.util.HashMap<>();
                 headers.put("User-Agent", USER_AGENT);
                 headers.put("Accept", "application/geo+json,application/json");
-                headers.put("Cache-Control", "no-cache, no-store, must-revalidate");
+                headers.put("Cache-Control", "no-cache");
                 headers.put("Pragma", "no-cache");
                 headers.put("Expires", "0");
                 Log.d(TAG, "Request headers: " + headers.toString());
                 return headers;
             }
         };
+        try {
+            jsonObjectRequest.setShouldCache(false);
+            if (requestQueue != null && requestQueue.getCache() != null) requestQueue.getCache().remove(geocodeUrl);
+        } catch (Exception ignored) {}
         requestQueue.getCache().clear();
         if (isAdded()) requestQueue.add(jsonObjectRequest);
     }
@@ -625,7 +571,7 @@ public class ForecastFragment extends Fragment {
                 Map<String, String> headers = new HashMap<>();
                 headers.put("User-Agent", USER_AGENT);
                 headers.put("Accept", "application/geo+json,application/json");
-                headers.put("Cache-Control", "no-cache, no-store, must-revalidate");
+                headers.put("Cache-Control", "no-cache");
                 headers.put("Pragma", "no-cache");
                 headers.put("Expires", "0");
                 Log.d(TAG, "Request headers: " + headers.toString());
@@ -662,17 +608,16 @@ public class ForecastFragment extends Fragment {
                 Request.Method.GET, forecastUrl, null, response -> {
                     if (isAdded()) {
                     try {
-                        // Explicitly clear daily graph before updating
-                        if (dailyGraphViewForecast != null) {
-                            dailyGraphViewForecast.removeAllSeries();
-                        }
+                        // Explicitly clear old GraphView references removed; no-op
                         JSONObject properties = response.getJSONObject("properties");
                         JSONArray periods = properties.getJSONArray("periods");
-                        LineGraphSeries<DataPoint> daySeries = new LineGraphSeries<>();
-                        LineGraphSeries<DataPoint> nightSeries = new LineGraphSeries<>();
+                        // GraphView LineGraphSeries removed; we only collect temps for the BarChart
                         boolean isDaytimeInitial = periods.getJSONObject(0).getBoolean("isDaytime");
                         JSONObject dayPeriod;
                         JSONObject nightPeriod;
+                        // collect day and night temps to use for daily bar chart (we'll render stacked/duotone bars)
+                        java.util.ArrayList<Float> collectedDayTemps = new java.util.ArrayList<>();
+                        java.util.ArrayList<Float> collectedNightTemps = new java.util.ArrayList<>();
                         for (int i = 0; i < 7; i++) {
                             if (isDaytimeInitial) {
                                 dayPeriod = periods.getJSONObject(2 * i);
@@ -685,15 +630,143 @@ public class ForecastFragment extends Fragment {
                             double nightTemp = nightPeriod.getDouble("temperature");
                             double dayTempConverted = convertTemperatureForGraph(dayTemp, tempUnit);
                             double nightTempConverted = convertTemperatureForGraph(nightTemp, tempUnit);
-                            if (isDaytimeInitial) {
-                                daySeries.appendData(new DataPoint(i, dayTempConverted), false, 7);
-                            } else {
-                                daySeries.appendData(new DataPoint(i + 1, dayTempConverted), false, 7);
-                            }
-                            nightSeries.appendData(new DataPoint(i, nightTempConverted), false, 7);
+                            // collect plotted day temperature (no LineGraphSeries append)
+                            // store day and night temps (as plotted) for daily bar chart
+                            collectedDayTemps.add((float) dayTempConverted);
+                            collectedNightTemps.add((float) nightTempConverted);
+                            // collect plotted night temperature (no LineGraphSeries append)
                         }
-                        weatherViewModel.setDailyGraphDataDay(daySeries);
-                        weatherViewModel.setDailyGraphDataNight(nightSeries);
+                        // GraphView data removed: no longer publishing day/night LineGraphSeries to ViewModel
+
+                        // Also populate the new daily BarChart below the GraphView
+                        if (dailyBarChart != null) {
+                            java.util.ArrayList<BarEntry> dailyBarEntries = new java.util.ArrayList<>();
+                            java.util.ArrayList<String> dailyBarLabels = new java.util.ArrayList<>();
+                            // Use collectedDayTemps as the primary daily values (avoid calling daySeries.getValues())
+                            int daysToUse = Math.min(7, Math.min(collectedDayTemps.size(), collectedNightTemps.size()));
+                            for (int i = 0; i < daysToUse; i++) {
+                                try {
+                                    float dayVal = collectedDayTemps.get(i);
+                                    float nightVal = collectedNightTemps.get(i);
+                                    // low = min(night, day), high = max(night, day)
+                                    float low = Math.min(dayVal, nightVal);
+                                    float high = Math.max(dayVal, nightVal);
+                                    float lowerSegment = low;
+                                    float upperSegment = Math.max(0f, high - low);
+                                    // stacked BarEntry: [lowerSegment, upperSegment]
+                                    dailyBarEntries.add(new BarEntry(i, new float[]{lowerSegment, upperSegment}));
+                                    // Use weekday labels (Mon, Tue, ...)
+                                    java.time.LocalDate date = java.time.LocalDate.now().plusDays(i);
+                                    String dayLabel = date.format(java.time.format.DateTimeFormatter.ofPattern("EEE"));
+                                    dailyBarLabels.add(dayLabel);
+                                } catch (Exception e) {
+                                    // fallback
+                                    dailyBarEntries.add(new BarEntry(i, 0f));
+                                    dailyBarLabels.add("");
+                                }
+                            }
+
+                            BarDataSet dailyDataSet = new BarDataSet(dailyBarEntries, "Daily");
+                            int colorOnSurface = ContextCompat.getColor(requireContext(), android.R.color.white);
+                            if (getContext() != null) {
+                                TypedValue typedValue = new TypedValue();
+                                getContext().getTheme().resolveAttribute(com.google.android.material.R.attr.colorOnSurface, typedValue, true);
+                                colorOnSurface = typedValue.data;
+                            }
+                            int colorLow = ContextCompat.getColor(requireContext(), R.color.chart_low);
+                            int colorHigh = ContextCompat.getColor(requireContext(), R.color.chart_high);
+                            dailyDataSet.setColors(new int[]{colorLow, colorHigh});
+                            dailyDataSet.setStackLabels(new String[]{"Low","High"});
+                            // We draw values ourselves in the custom renderer to have full control
+                            // Disable dataset value drawing to avoid duplicate/overlapping draws
+                            dailyDataSet.setDrawValues(false);
+                            dailyDataSet.setValueTextSize(14f);
+                            try {
+                                android.graphics.Typeface _tf2 = ResourcesCompat.getFont(getContext(), R.font.montsemibold);
+                                if (_tf2 != null) dailyDataSet.setValueTypeface(_tf2);
+                            } catch (Exception ignored) {}
+                            BarData dailyBarData = new BarData(dailyDataSet);
+                            dailyBarData.setBarWidth(0.6f);
+                            dailyBarChart.setData(dailyBarData);
+
+                            // X axis labels
+                            XAxis dx = dailyBarChart.getXAxis();
+                            dx.setGranularity(1f);
+                            dx.setGranularityEnabled(true);
+                            dx.setPosition(XAxis.XAxisPosition.BOTTOM);
+                            dx.setDrawGridLines(false);
+                            dx.setValueFormatter(new IndexAxisValueFormatter(dailyBarLabels));
+                            dx.setTextColor(colorOnSurface);
+                            dx.setTextSize(12f);
+                            setTypefaceIfAvailable(dx, R.font.montsemibold);
+                            // Push X axis labels a bit further down so value labels don't overlap them
+                            dx.setYOffset(Utils.convertDpToPixel(12f));
+                            // Don't force label count – let granularity=1 ensure integer steps and use axis min/max
+                            // so labels align with bar centers. This avoids skipped/misaligned labels.
+                            dx.setCenterAxisLabels(false);
+
+                            // Y axis
+                            YAxis dy = dailyBarChart.getAxisLeft();
+                            dy.setDrawGridLines(false);
+                            dy.setTextColor(colorOnSurface);
+                            dy.setTextSize(12f);
+                            setTypefaceIfAvailable(dy, R.font.montsemibold);
+                            if (!dailyBarEntries.isEmpty()) {
+                                // For stacked bars we need the min of the lower segments and the max total value
+                                float minLower = Float.MAX_VALUE;
+                                float maxTotal = -Float.MAX_VALUE;
+                                for (BarEntry e : dailyBarEntries) {
+                                    if (e == null) continue;
+                                    if (e.getYVals() != null) {
+                                        float[] vals = e.getYVals();
+                                        float lower = vals.length > 0 ? vals[0] : 0f;
+                                        float total = 0f;
+                                        for (float v : vals) total += v;
+                                        if (lower < minLower) minLower = lower;
+                                        if (total > maxTotal) maxTotal = total;
+                                    } else {
+                                        float lower = e.getY();
+                                        if (lower < minLower) minLower = lower;
+                                        if (e.getY() > maxTotal) maxTotal = e.getY();
+                                    }
+                                }
+                                if (minLower == Float.MAX_VALUE) minLower = 0f;
+                                if (maxTotal == -Float.MAX_VALUE) maxTotal = 0f;
+                                float range = Math.max(1f, maxTotal - minLower);
+                                // Start axis 5 units below the lowest low temperature so the low segment is visible
+                                float bottomAxis = minLower - 5f;
+                                float topPad = Math.max(5f, range * 0.10f);
+                                dy.setAxisMinimum(bottomAxis);
+                                dy.setAxisMaximum(maxTotal + topPad);
+                            }
+                            dailyBarChart.getAxisRight().setEnabled(false);
+                            // Increase bottom extra offset to ensure labels and axis have room
+                            dailyBarChart.setExtraOffsets(Utils.convertDpToPixel(4f), Utils.convertDpToPixel(12f), Utils.convertDpToPixel(4f), Utils.convertDpToPixel(20f));
+                            // Make the daily chart non-scrolling and fit all bars into view
+                            dailyBarChart.setDragEnabled(false);
+                            dailyBarChart.setScaleEnabled(false);
+                            dailyBarChart.setTouchEnabled(false);
+                            dailyBarChart.setFitBars(true);
+                            int labelCount = Math.max(1, dailyBarLabels.size());
+                            // Align axis min/max to bar centers so IndexAxisValueFormatter maps correctly
+                            // Bars are at x = 0..(n-1); set min to -0.5 and max to n - 0.5 (fitBars may also adjust)
+                            float axisMin = -0.5f;
+                            float axisMax = Math.max(0f, labelCount - 0.5f);
+                            dx.setLabelCount(labelCount, false);
+                            dx.setAxisMinimum(axisMin);
+                            dx.setAxisMaximum(axisMax);
+                            // Ensure the chart shows the full range
+                            dailyBarChart.setVisibleXRangeMaximum(labelCount);
+                            dailyBarChart.moveViewToX(0f);
+                            float radiusDp = 8f;
+                            dailyBarChart.setRenderer(new RoundedBarChartRenderer(dailyBarChart, dailyBarChart.getAnimator(), dailyBarChart.getViewPortHandler(), Utils.convertDpToPixel(radiusDp)));
+                            dailyBarChart.getLegend().setEnabled(false);
+                            dailyBarChart.getDescription().setEnabled(false);
+                            // Apply Montserrat semibold to title/labels where possible
+                            setTypefaceIfAvailable(dx, R.font.montsemibold);
+                            setTypefaceIfAvailable(dy, R.font.montsemibold);
+                            dailyBarChart.invalidate();
+                        }
 
                         // ... (rest of your daily forecast parsing for RecyclerView) ...
                         ArrayList<SpannableString> dailyItems = new ArrayList<>();
@@ -718,7 +791,7 @@ public class ForecastFragment extends Fragment {
                             }
                             pair = forecastMap.get(name);
                             double tempVal = current.optDouble("temperature", Double.NaN);
-                            String temperature = Double.isNaN(tempVal) ? "--" : formatTemperature(tempVal, tempUnit, showDecimalTemp);
+                            String temperature = Double.isNaN(tempVal) ? "--" : formatTemperature(tempVal, tempUnit);
                             String description = current.optString("shortForecast");
                             String precipitationProbability = String.valueOf(current.getJSONObject("probabilityOfPrecipitation").optInt("value", 1013));
                             String humidityValue = current.has("relativeHumidity") ? current.getJSONObject("relativeHumidity").optInt("value") + "%" : "N/A";
@@ -793,7 +866,7 @@ public class ForecastFragment extends Fragment {
                                 
                                 if (name.contains("Afternoon")) {
                                     coloredTemperature = new SpannableString(pair.afternoonTemperature != null ? pair.afternoonTemperature : "");
-                                    if (pair.afternoonTemperature != null) coloredTemperature.setSpan(new ForegroundColorSpan(getResources().getColor(android.R.color.holo_red_light)), 0, pair.afternoonTemperature.length(), 0);
+                                    if (pair.afternoonTemperature != null) coloredTemperature.setSpan(new ForegroundColorSpan(ContextCompat.getColor(requireContext(), R.color.df_high)), 0, pair.afternoonTemperature.length(), 0);
                                     descriptionText = pair.afternoonDescription;
                                     precipitationText = pair.afternoonPrecipitation != null ? "Afternoon: " + pair.afternoonPrecipitation : "";
                                     humidityText = pair.afternoonHumidity != null ? "Afternoon: " + pair.afternoonHumidity : "";
@@ -809,7 +882,7 @@ public class ForecastFragment extends Fragment {
                                     processedPeriods.add(periodKey);
                                 } else if (name.contains("Tonight")) {
                                     coloredTemperature = new SpannableString(pair.tonightTemperature != null ? pair.tonightTemperature : "");
-                                    if (pair.tonightTemperature != null) coloredTemperature.setSpan(new ForegroundColorSpan(getResources().getColor(android.R.color.holo_blue_light)), 0, pair.tonightTemperature.length(), 0);
+                                    if (pair.tonightTemperature != null) coloredTemperature.setSpan(new ForegroundColorSpan(ContextCompat.getColor(requireContext(), R.color.df_low)), 0, pair.tonightTemperature.length(), 0);
                                     descriptionText = pair.tonightDescription;
                                     precipitationText = pair.tonightPrecipitation != null ? "Tonight: " + pair.tonightPrecipitation : "";
                                     humidityText = pair.tonightHumidity != null ? "Tonight: " + pair.tonightHumidity : "";
@@ -834,12 +907,12 @@ public class ForecastFragment extends Fragment {
                                     }
                                     coloredTemperature = new SpannableString(tempText);
                                     if (pair.dayTemperature != null) {
-                                        coloredTemperature.setSpan(new ForegroundColorSpan(getResources().getColor(android.R.color.holo_red_light)), 0, pair.dayTemperature.length(), 0);
+                                        coloredTemperature.setSpan(new ForegroundColorSpan(ContextCompat.getColor(requireContext(), R.color.df_high)), 0, pair.dayTemperature.length(), 0);
                                     }
                                     if (pair.nightTemperature != null) {
                                         int nightStart = tempText.indexOf(pair.nightTemperature);
                                         if (nightStart != -1) {
-                                            coloredTemperature.setSpan(new ForegroundColorSpan(getResources().getColor(android.R.color.holo_blue_light)), nightStart, nightStart + pair.nightTemperature.length(), 0);
+                                            coloredTemperature.setSpan(new ForegroundColorSpan(ContextCompat.getColor(requireContext(), R.color.df_low)), nightStart, nightStart + pair.nightTemperature.length(), 0);
                                         }
                                     }
                                     descriptionText = (pair.dayDescription != null ? pair.dayDescription : "") + (pair.nightDescription != null && pair.dayDescription != null && !pair.dayDescription.equals(pair.nightDescription) ? " / " + pair.nightDescription : (pair.nightDescription != null ? pair.nightDescription : ""));
@@ -865,10 +938,10 @@ public class ForecastFragment extends Fragment {
                             String highTemp = "";
                             String lowTemp = "";
                             if (isDaytime) {
-                                highTemp = formatTemperature(firstPeriod.getDouble("temperature"), tempUnit, showDecimalTemp);
-                                lowTemp = formatTemperature(secondPeriod.getDouble("temperature"), tempUnit, showDecimalTemp);
+                                highTemp = formatTemperature(firstPeriod.getDouble("temperature"), tempUnit);
+                                lowTemp = formatTemperature(secondPeriod.getDouble("temperature"), tempUnit);
                             } else {
-                                lowTemp = formatTemperature(firstPeriod.getDouble("temperature"), tempUnit, showDecimalTemp);
+                                lowTemp = formatTemperature(firstPeriod.getDouble("temperature"), tempUnit);
                                 highTemp = "--";
                             }
                             weatherViewModel.setHighTemperature(highTemp);
@@ -912,7 +985,7 @@ public class ForecastFragment extends Fragment {
                 Map<String, String> headers = new HashMap<>();
                 headers.put("User-Agent", USER_AGENT);
                 headers.put("Accept", "application/geo+json,application/json");
-                headers.put("Cache-Control", "no-cache, no-store, must-revalidate");
+                headers.put("Cache-Control", "no-cache");
                 headers.put("Pragma", "no-cache");
                 headers.put("Expires", "0");
                 Log.d(TAG, "Request headers: " + headers.toString());
@@ -977,7 +1050,7 @@ public class ForecastFragment extends Fragment {
                         if (periods.length() > 0) {
                             JSONObject currentHour = WeatherDataUtils.getFirstHourlyPeriod(response);
                             double tempVal = currentHour.optDouble("temperature", Double.NaN);
-                            String temperature = Double.isNaN(tempVal) ? "--" : formatTemperature(tempVal, tempUnit, showDecimalTemp);
+                            String temperature = Double.isNaN(tempVal) ? "--" : formatTemperature(tempVal, tempUnit);
                             String shortForecast = currentHour.optString("shortForecast");
                             weatherViewModel.setCurrentTemperature(temperature); // Set CURRENT temp
                             weatherViewModel.setDescription(shortForecast);
@@ -1029,17 +1102,17 @@ public class ForecastFragment extends Fragment {
                             DateTimeFormatter.ofPattern("h:00 a");
                         DateTimeFormatter dayOutputFormatter = DateTimeFormatter.ofPattern("EEE");
                         LocalDateTime now = LocalDateTime.now();
-                        // Explicitly clear hourly graph before updating
-                        if (hourlyGraphViewForecast != null) {
-                            hourlyGraphViewForecast.removeAllSeries();
-                        }
-                        LineGraphSeries<DataPoint> series = new LineGraphSeries<>();
+                            // Explicitly clear old GraphView references removed; no-op
+                        // GraphView LineGraphSeries removed; we build BarEntries for MPAndroidChart instead
+                        // Prepare MPAndroidChart data structures
+                        java.util.ArrayList<BarEntry> barEntries = new java.util.ArrayList<>();
+                        java.util.ArrayList<String> barLabels = new java.util.ArrayList<>();
                         for (int i = 0; i < periods.length() && i < 48; i++) {
                             JSONObject current = periods.getJSONObject(i);
                             String temperatureStr = current.optString("temperature");
                             double tempVal = Double.NaN;
                             try { tempVal = Double.parseDouble(temperatureStr); } catch (Exception ignore) {}
-                            String formattedTemp = Double.isNaN(tempVal) ? "--" : formatTemperature(tempVal, tempUnit, showDecimalTemp);
+                            String formattedTemp = Double.isNaN(tempVal) ? "--" : formatTemperature(tempVal, tempUnit);
                             String description = current.optString("shortForecast");
                             String precipitationProbability = String.valueOf(current.getJSONObject("probabilityOfPrecipitation").optInt("value", 1013));
                             String humidityValue = current.has("relativeHumidity") ? current.getJSONObject("relativeHumidity").optInt("value") + "%" : "N/A";
@@ -1075,10 +1148,116 @@ public class ForecastFragment extends Fragment {
                             double tempValConverted = convertTemperatureForGraph(tempVal, tempUnit);
                             Log.d(TAG, "Graph Point - Time: " + date + ", Temp: " + tempValConverted);  // Log data point
                             if (!Double.isNaN(tempValConverted)) {
-                                series.appendData(new DataPoint(i, tempValConverted), false, 48);
+                                // Add bar entry and label for MPAndroidChart
+                                barEntries.add(new BarEntry(i, (float) tempValConverted));
+                                // Use the same displayTime as label
+                                barLabels.add(displayTime);
                             }
                         }
-                        weatherViewModel.setHourlyGraphData(series);
+                        // GraphView data removed: not storing hourly LineGraphSeries in ViewModel
+                        // Configure BarChart using the collected entries and labels
+                        if (hourlyBarChart != null) {
+                            BarDataSet barDataSet = new BarDataSet(barEntries, "Temperature");
+                            int colorOnSurface = ContextCompat.getColor(requireContext(), android.R.color.white);
+                            int barColor = ContextCompat.getColor(requireContext(), R.color.chart_bar);
+                            if (getContext() != null) {
+                                TypedValue typedValue = new TypedValue();
+                                getContext().getTheme().resolveAttribute(com.google.android.material.R.attr.colorOnSurface, typedValue, true);
+                                colorOnSurface = typedValue.data;
+                            }
+                            barDataSet.setColor(barColor);
+                            // We draw values ourselves in the custom renderer to have full control
+                            // Disable dataset value drawing to avoid duplicate/overlapping draws
+                            barDataSet.setDrawValues(false);
+                            barDataSet.setValueTextSize(14f);
+                            try {
+                                android.graphics.Typeface _tf = ResourcesCompat.getFont(getContext(), R.font.montsemibold);
+                                if (_tf != null) barDataSet.setValueTypeface(_tf);
+                            } catch (Exception ignored) {}
+
+                            // Make bars thinner and gaps wider by reducing bar width
+                            BarData barData = new BarData(barDataSet);
+                            // A smaller bar width (e.g., 0.5f) will make bars thinner and gaps wider
+                            barData.setBarWidth(0.5f);
+                            hourlyBarChart.setData(barData);
+
+                            // X axis labels
+                            XAxis xAxis = hourlyBarChart.getXAxis();
+                            xAxis.setGranularity(1f);
+                            xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
+                            xAxis.setDrawGridLines(false);
+                            xAxis.setLabelRotationAngle(-45f);
+                            xAxis.setValueFormatter(new IndexAxisValueFormatter(barLabels));
+                            xAxis.setTextColor(colorOnSurface);
+                            // Make axis labels larger and apply Montserrat semibold if available
+                            xAxis.setTextSize(12f);
+                            setTypefaceIfAvailable(xAxis, R.font.montsemibold);
+                            // Provide extra offset and Y offset so bottom labels are not clipped
+                            xAxis.setYOffset(Utils.convertDpToPixel(6f));
+                            float extraLeft = Utils.convertDpToPixel(4f);
+                            float extraTop = Utils.convertDpToPixel(12f);
+                            float extraRight = Utils.convertDpToPixel(4f);
+                            // increase bottom padding to avoid clipping of slanted labels during initial layout
+                            float extraBottom = Utils.convertDpToPixel(18f);
+                            hourlyBarChart.setExtraOffsets(extraLeft, extraTop, extraRight, extraBottom);
+
+                            // ensure chart reserves minimum offset for labels
+                            hourlyBarChart.setMinOffset(Utils.convertDpToPixel(12f));
+
+                            // Y axis styling
+                            YAxis leftAxis = hourlyBarChart.getAxisLeft();
+                            leftAxis.setDrawGridLines(false);
+                            leftAxis.setTextColor(colorOnSurface);
+                            leftAxis.setTextSize(12f);
+                            setTypefaceIfAvailable(leftAxis, R.font.montsemibold);
+
+                            // compute min and max Y from entries and set axis limits with padding so labels can be drawn above bars
+                            if (!barEntries.isEmpty()) {
+                                float minY = Float.MAX_VALUE;
+                                float maxY = -Float.MAX_VALUE;
+                                for (BarEntry e : barEntries) {
+                                    if (e.getY() < minY) minY = e.getY();
+                                    if (e.getY() > maxY) maxY = e.getY();
+                                }
+                                float range = Math.max(1f, maxY - minY);
+                                // pad bottom by 5 units and top by either 5 units or 10% of range, whichever larger
+                                float bottomPad = 3f;
+                                float topPad = Math.max(5f, range * 0.10f);
+                                leftAxis.setAxisMinimum(minY - bottomPad);
+                                leftAxis.setAxisMaximum(maxY + topPad);
+                            } else {
+                                leftAxis.setAxisMinimum(0f);
+                                leftAxis.setAxisMaximum(10f);
+                            }
+
+                            hourlyBarChart.getAxisRight().setEnabled(false);
+
+                            // make labels and chart interactive for horizontal scrolling
+                            hourlyBarChart.setDragEnabled(true);
+                            hourlyBarChart.setScaleEnabled(false);
+                            // show a window of ~6 items so user can scroll horizontally
+                            hourlyBarChart.setVisibleXRangeMaximum(6f);
+                            // ensure bars have space and view starts at 0
+                            hourlyBarChart.moveViewToX(0f);
+
+                            // Apply rounded corners renderer
+                            float radiusDp = 16f; // adjust as needed
+                            float radiusPx = Utils.convertDpToPixel(radiusDp);
+                            hourlyBarChart.setRenderer(new RoundedBarChartRenderer(hourlyBarChart, hourlyBarChart.getAnimator(), hourlyBarChart.getViewPortHandler(), radiusPx));
+
+                            hourlyBarChart.getLegend().setEnabled(false);
+                            hourlyBarChart.getDescription().setEnabled(false);
+                            // Invalidate after layout pass to ensure label bounds are measured (prevents clipped labels that snap into place)
+                            hourlyBarChart.post(() -> {
+                                // cancel any pending animation phases that could move labels
+                                try {
+                                    // Ensure animator is at final phase so labels/positions don't shift after layout
+                                    hourlyBarChart.getAnimator().setPhaseX(1f);
+                                    hourlyBarChart.getAnimator().setPhaseY(1f);
+                                } catch (Exception ignored) {}
+                                hourlyBarChart.invalidate();
+                            });
+                        }
                         horizontalHourlyAdapter = new HorizontalHourlyForecastAdapter(getContext(), hourlyItems, hourlyTime, hourlyIcon, hourlyPrecipitation, hourlyHumidity, hourlyLottieAnimList, hourlyDescList);
                         horizontalHourlyRecyclerView.setAdapter(horizontalHourlyAdapter);
                         final LinearLayoutManager layoutManager = (LinearLayoutManager) horizontalHourlyRecyclerView.getLayoutManager();
@@ -1117,7 +1296,7 @@ public class ForecastFragment extends Fragment {
                 Map<String, String> headers = new HashMap<>();
                 headers.put("User-Agent", USER_AGENT);
                 headers.put("Accept", "application/geo+json,application/json");
-                headers.put("Cache-Control", "no-cache, no-store, must-revalidate");
+                headers.put("Cache-Control", "no-cache");
                 headers.put("Pragma", "no-cache");
                 headers.put("Expires", "0");
                 Log.d(TAG, "Request headers: " + headers.toString());
@@ -1134,20 +1313,6 @@ public class ForecastFragment extends Fragment {
         forecastHourlyRequest.setShouldCache(false);
         requestQueue.getCache().clear();
         requestQueue.add(forecastHourlyRequest);
-    }
-    private static class WeatherData {
-        private String temperature;
-        private String description;
-        public WeatherData(String temperature, String description) {
-            this.temperature = temperature;
-            this.description = description;
-        }
-        public String getTemperature() {
-            return temperature;
-        }
-        public String getDescription() {
-            return description;
-        }
     }
     private void showLoading() {
         if (progressBar != null) {
@@ -1172,7 +1337,7 @@ public class ForecastFragment extends Fragment {
             Log.d(tag, json.substring(start, end));
         }
     }
-    private String formatTemperature(double temp, String unit, boolean showDecimal) {
+    private String formatTemperature(double temp, String unit) {
         // US: °F, SI: °C, CA: °C, UK: °C
         double displayTemp = temp;
         String unitLabel = "°F";
@@ -1189,13 +1354,8 @@ public class ForecastFragment extends Fragment {
                 unitLabel = "°F";
                 break;
         }
-        if (showDecimal) {
-            DecimalFormat df = new DecimalFormat("#.#");
-            df.setRoundingMode(RoundingMode.HALF_UP);
-            return df.format(displayTemp) + unitLabel;
-        } else {
-            return Math.round(displayTemp) + unitLabel;
-        }
+        // Always round to whole numbers for a consumer-focused display
+        return Math.round(displayTemp) + unitLabel;
     }
     private String formatWind(String windSpeedStr, String unit) {
         // windSpeedStr is like "10 mph" or "16 km/h"
@@ -1245,6 +1405,16 @@ public class ForecastFragment extends Fragment {
     private void updateLocationDisplay(String location) {
         if (locationDisplay != null && isAdded()) {
             locationDisplay.setText(location);
+        }
+    }
+
+    private void setTypefaceIfAvailable(AxisBase axis, int fontResId) {
+        if (!isAdded() || getContext() == null) return;
+        try {
+            android.graphics.Typeface tf = ResourcesCompat.getFont(getContext(), fontResId);
+            if (tf != null) axis.setTypeface(tf);
+        } catch (Exception e) {
+            // ignore if font not available
         }
     }
 
@@ -1510,6 +1680,277 @@ public class ForecastFragment extends Fragment {
             forecastAdView.pause();
         }
     }
+
+    // Custom renderer to draw rounded bars
+    public static class RoundedBarChartRenderer extends BarChartRenderer {
+        private final float mRadius;
+
+        public RoundedBarChartRenderer(BarChart chart, ChartAnimator animator, ViewPortHandler viewPortHandler, float radiusPx) {
+            super(chart, animator, viewPortHandler);
+            this.mRadius = radiusPx;
+        }
+
+        @Override
+        public void drawData(Canvas c) {
+            super.drawData(c);
+            // The default drawing is done in drawData; we override drawDataSet below.
+        }
+
+        @Override
+        protected void drawDataSet(Canvas c, IBarDataSet dataSet, int index) {
+            mBarBorderPaint.setColor(dataSet.getBarBorderColor());
+
+            final boolean drawBorder = dataSet.getBarBorderWidth() > 0.f;
+
+            RectF barRect = new RectF();
+            Transformer trans = mChart.getTransformer(dataSet.getAxisDependency());
+
+            // Determine axis minimum for the base of bars (approximate using BarData min minus padding)
+            float axisMin = 0f;
+            if (mChart.getBarData() != null) {
+                axisMin = mChart.getBarData().getYMin() - 5f;
+            }
+
+            float barWidth = 0.5f; // default fallback
+            if (mChart.getBarData() != null) {
+                barWidth = mChart.getBarData().getBarWidth();
+            }
+            float halfBar = barWidth / 2f;
+
+            for (int i = 0; i < dataSet.getEntryCount(); i++) {
+                BarEntry entry = (BarEntry) dataSet.getEntryForIndex(i);
+                if (entry == null) continue;
+
+                float x = entry.getX();
+
+                // If this entry contains stacked values, draw each stack segment separately
+                if (entry.getYVals() != null) {
+                    float[] vals = entry.getYVals();
+                    float pos = 0f;
+                    for (int k = 0; k < vals.length; k++) {
+                        float start = pos;
+                        pos += vals[k];
+                        float end = pos;
+
+                        // Build rect for this stack segment in value coordinates: left, top(end), right, bottom(start)
+                        barRect.left = x - halfBar;
+                        barRect.right = x + halfBar;
+                        barRect.top = end;
+                        barRect.bottom = start;
+
+                        try {
+                            trans.rectValueToPixel(barRect);
+                        } catch (Exception ex) {
+                            continue;
+                        }
+
+                        int color = dataSet.getColor(k);
+                        mRenderPaint.setColor(color);
+                        // Draw per-segment with rounded corners on outer edges only
+                        android.graphics.Path segmentPath = new android.graphics.Path();
+                        float[] radii = new float[8];
+                        // if only one segment, round all corners
+                        if (vals.length == 1) {
+                            for (int r = 0; r < 8; r++) radii[r] = mRadius;
+                        } else {
+                            // lower segment (k==0): round bottom corners
+                            if (k == 0) {
+                                // top-left, top-right = 0; bottom-right, bottom-left = mRadius
+                                radii = new float[]{0f,0f, 0f,0f, mRadius,mRadius, mRadius,mRadius};
+                            } else if (k == vals.length - 1) {
+                                // upper segment: round top corners
+                                radii = new float[]{mRadius,mRadius, mRadius,mRadius, 0f,0f, 0f,0f};
+                            } else {
+                                // middle segment: no rounding
+                                radii = new float[]{0f,0f, 0f,0f, 0f,0f, 0f,0f};
+                            }
+                        }
+                        segmentPath.addRoundRect(barRect, radii, android.graphics.Path.Direction.CW);
+                        c.drawPath(segmentPath, mRenderPaint);
+                        if (drawBorder) {
+                            c.drawPath(segmentPath, mBarBorderPaint);
+                        }
+                    }
+                } else {
+                    float y = entry.getY();
+
+                    // Build rect in value coordinates: left, top, right, bottom
+                    // top should be the higher value (y) and bottom the axis minimum
+                    barRect.left = x - halfBar;
+                    barRect.right = x + halfBar;
+                    barRect.top = y;
+                    barRect.bottom = axisMin;
+
+                    // convert to pixels
+                    try {
+                        trans.rectValueToPixel(barRect);
+                    } catch (Exception ex) {
+                        continue; // skip if conversion fails
+                    }
+
+                    int color = dataSet.getColor(i);
+                    mRenderPaint.setColor(color);
+                    // single (non-stacked) bar: round all corners
+                    android.graphics.Path singlePath = new android.graphics.Path();
+                    float[] radiiAll = new float[]{mRadius,mRadius, mRadius,mRadius, mRadius,mRadius, mRadius,mRadius};
+                    singlePath.addRoundRect(barRect, radiiAll, android.graphics.Path.Direction.CW);
+                    c.drawPath(singlePath, mRenderPaint);
+                    if (drawBorder) {
+                        c.drawPath(singlePath, mBarBorderPaint);
+                    }
+                }
+            }
+        }
+
+        @Override
+        public void drawValues(Canvas c) {
+            // Draw values above each rounded bar using safe per-entry bounds
+            if (mChart.getData() == null) return;
+            Paint valuePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            // Resolve a theme-aware label color (prefer colorOnSurface) so labels adapt to light/dark mode
+            int labelColor = Color.WHITE;
+            try {
+                android.content.Context ctx = ((android.view.View) mChart).getContext();
+                TypedValue tv = new TypedValue();
+                if (ctx.getTheme().resolveAttribute(com.google.android.material.R.attr.colorOnSurface, tv, true)) {
+                    labelColor = tv.data;
+                } else {
+                    labelColor = ContextCompat.getColor(ctx, android.R.color.white);
+                }
+            } catch (Exception ignored) {}
+            valuePaint.setColor(labelColor);
+            valuePaint.setTextAlign(Paint.Align.CENTER);
+            // Larger and bolder top labels for readability
+            valuePaint.setTextSize(Utils.convertDpToPixel(14f));
+            valuePaint.setFakeBoldText(true);
+            // Try to apply Montserrat semibold for value labels
+            try {
+                android.graphics.Typeface _chartTf = ResourcesCompat.getFont(((android.view.View) mChart).getContext(), R.font.montsemibold);
+                if (_chartTf != null) valuePaint.setTypeface(_chartTf);
+            } catch (Exception ignored) {}
+            // subtle shadow for contrast
+            valuePaint.setShadowLayer(Utils.convertDpToPixel(2f), 0f, Utils.convertDpToPixel(1f), Color.argb(120, 0, 0, 0));
+
+            for (int di = 0; di < mChart.getBarData().getDataSetCount(); di++) {
+                IBarDataSet dataSet = mChart.getBarData().getDataSetByIndex(di);
+                if (dataSet == null) continue;
+
+                Transformer trans = mChart.getTransformer(dataSet.getAxisDependency());
+                RectF rect = new RectF();
+
+                // Simple collision-avoidance: track right edge of last drawn top/low labels
+                float lastTopLabelRight = Float.NEGATIVE_INFINITY;
+                float lastLowLabelRight = Float.NEGATIVE_INFINITY;
+                float minLabelSpacing = Utils.convertDpToPixel(6f);
+
+                for (int j = 0; j < dataSet.getEntryCount(); j++) {
+                    BarEntry entry = (BarEntry) dataSet.getEntryForIndex(j);
+                    if (entry == null) continue;
+
+                    float x = entry.getX();
+                    float barWidth = mChart.getBarData() != null ? mChart.getBarData().getBarWidth() : 0.5f;
+                    float halfBar = barWidth / 2f;
+
+                    // If stacked, draw low label inside lower segment and high label above top
+                    if (entry.getYVals() != null) {
+                        float[] vals = entry.getYVals();
+                        float pos = 0f;
+                        float total = 0f;
+                        for (float v : vals) total += v;
+
+                        for (int k = 0; k < vals.length; k++) {
+                            float start = pos;
+                            pos += vals[k];
+                            float end = pos;
+
+                            rect.left = x - halfBar;
+                            rect.right = x + halfBar;
+                            rect.top = end;
+                            rect.bottom = start;
+
+                            try {
+                                trans.rectValueToPixel(rect);
+                            } catch (Exception ex) {
+                                continue;
+                            }
+
+                            // For the low segment (k==0), draw its temperature label inside the segment (centered)
+                            if (k == 0) {
+                                Paint lowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                                // Use same theme-aware label color for low labels
+                                int lowLabelColor = labelColor;
+                                try {
+                                    android.content.Context ctx2 = ((android.view.View) mChart).getContext();
+                                    TypedValue tv2 = new TypedValue();
+                                    if (ctx2.getTheme().resolveAttribute(com.google.android.material.R.attr.colorOnSurface, tv2, true)) {
+                                        lowLabelColor = tv2.data;
+                                    }
+                                } catch (Exception ignored) {}
+                                lowPaint.setColor(lowLabelColor);
+                                lowPaint.setTextAlign(Paint.Align.CENTER);
+                                lowPaint.setTextSize(Utils.convertDpToPixel(12f));
+                                lowPaint.setFakeBoldText(true);
+                                try {
+                                    android.graphics.Typeface _tfLow = ResourcesCompat.getFont(((android.view.View) mChart).getContext(), R.font.montsemibold);
+                                    if (_tfLow != null) lowPaint.setTypeface(_tfLow);
+                                } catch (Exception ignored) {}
+                                // Draw the low label just above the top of the low segment so it isn't hidden by the X axis
+                                float textX = rect.centerX();
+                                float textY = rect.top - Utils.convertDpToPixel(2f);
+                                // If the computed Y would place the label outside the top of the chart area, fallback to center
+                                if (textY < mViewPortHandler.contentTop()) {
+                                    textY = (rect.top + rect.bottom) / 2f + (lowPaint.getTextSize() / 3f);
+                                }
+                                String lowLabel = String.valueOf((int) Math.round(start + vals[k]));
+                                float lowLabelWidth = lowPaint.measureText(lowLabel);
+                                float lowLeft = textX - (lowLabelWidth / 2f);
+                                if (lowLeft > lastLowLabelRight + minLabelSpacing) {
+                                    c.drawText(lowLabel, textX, textY, lowPaint);
+                                    lastLowLabelRight = textX + (lowLabelWidth / 2f);
+                                }
+                            }
+
+                            // For the top-most segment, draw the high label above the full bar
+                            if (k == vals.length - 1) {
+                                float textX = rect.centerX();
+                                float textY = rect.top - Utils.convertDpToPixel(4f);
+                                String highLabel = String.valueOf((int) Math.round(total));
+                                float highLabelWidth = valuePaint.measureText(highLabel);
+                                float highLeft = textX - (highLabelWidth / 2f);
+                                if (highLeft > lastTopLabelRight + minLabelSpacing) {
+                                    c.drawText(highLabel, textX, textY, valuePaint);
+                                    lastTopLabelRight = textX + (highLabelWidth / 2f);
+                                }
+                            }
+                        }
+                    } else {
+                        float y = entry.getY();
+                        rect.left = x - halfBar;
+                        rect.right = x + halfBar;
+                        rect.top = y;
+                        rect.bottom = (mChart.getBarData() != null ? mChart.getBarData().getYMin() - 5f : 0f);
+
+                        try {
+                            trans.rectValueToPixel(rect);
+                        } catch (Exception ex) {
+                            continue;
+                        }
+
+                        // draw the text slightly above the top of the bar (avoid overlapping adjacent labels)
+                        float textX = rect.centerX();
+                        float textY = rect.top - Utils.convertDpToPixel(4f);
+                        String label = String.valueOf((int) Math.round(y));
+                        float labelWidth = valuePaint.measureText(label);
+                        float labelLeft = textX - (labelWidth / 2f);
+                        if (labelLeft > lastTopLabelRight + minLabelSpacing) {
+                            c.drawText(label, textX, textY, valuePaint);
+                            lastTopLabelRight = textX + (labelWidth / 2f);
+                        }
+                    }
+                }
+            }
+        }
+    }
     
     @Override
     public void onPause() {
@@ -1525,6 +1966,7 @@ public class ForecastFragment extends Fragment {
         if (forecastAdView != null) {
             forecastAdView.resume();
         }
+        // No-op: decimal-precision preference removed — temperatures are displayed rounded.
     }
 
     @Override

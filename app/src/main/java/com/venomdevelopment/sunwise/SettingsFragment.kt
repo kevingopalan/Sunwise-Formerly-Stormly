@@ -1,10 +1,11 @@
 package com.venomdevelopment.sunwise
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
-import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -14,13 +15,14 @@ import android.widget.Spinner
 import android.widget.Switch
 import android.widget.Toast
 import androidx.fragment.app.Fragment
-import android.widget.CompoundButton
+import androidx.core.net.toUri
+import androidx.core.content.edit
 
+@SuppressLint("UseSwitchCompatOrMaterialCode")
 class SettingsFragment : Fragment() {
     private lateinit var unitSpinner: Spinner
     private lateinit var windUnitSpinner: Spinner
     private lateinit var autoLocationSwitch: Switch
-    private lateinit var precisionSwitch: Switch
     private lateinit var timeFormatSwitch: Switch
     private lateinit var clearLocationsButton: Button
     private lateinit var feedbackButton: Button
@@ -36,7 +38,7 @@ class SettingsFragment : Fragment() {
         unitSpinner = rootView.findViewById(R.id.unit)
         windUnitSpinner = rootView.findViewById(R.id.windUnitSpinner)
         autoLocationSwitch = rootView.findViewById(R.id.autoLocationSwitch)
-        precisionSwitch = rootView.findViewById(R.id.precisionSwitch)
+    // precisionSwitch removed from code
         timeFormatSwitch = rootView.findViewById(R.id.timeFormatSwitch)
         clearLocationsButton = rootView.findViewById(R.id.clearLocationsButton)
         feedbackButton = rootView.findViewById(R.id.feedbackButton)
@@ -68,8 +70,7 @@ class SettingsFragment : Fragment() {
         super.onResume()
         // Set auto location switch to match current preference
         autoLocationSwitch.isChecked = sharedPreferences.getBoolean("auto_location_enabled", true)
-        // Set precision switch to match current preference
-        precisionSwitch.isChecked = sharedPreferences.getBoolean("show_decimal_temp", false)
+    // precision option removed; temperatures are displayed rounded by default
         // Set time format switch to match current preference
         timeFormatSwitch.isChecked = sharedPreferences.getBoolean("use_24_hour_format", false)
     }
@@ -90,8 +91,7 @@ class SettingsFragment : Fragment() {
             windUnitSpinner.setSelection(windUnitIndex)
         }
         // Load other preferences
-        autoLocationSwitch.isChecked = sharedPreferences.getBoolean("auto_location_enabled", true)
-        precisionSwitch.isChecked = sharedPreferences.getBoolean("show_decimal_temp", false)
+    autoLocationSwitch.isChecked = sharedPreferences.getBoolean("auto_location_enabled", true)
         timeFormatSwitch.isChecked = sharedPreferences.getBoolean("use_24_hour_format", false)
     }
 
@@ -100,41 +100,40 @@ class SettingsFragment : Fragment() {
             override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
                 val unitValues = resources.getStringArray(R.array.unit_values)
                 val selectedUnit = unitValues[position]
-                sharedPreferences.edit().putString("unit", selectedUnit).apply()
+                sharedPreferences.edit { putString("unit", selectedUnit) }
             }
             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
         })
-        windUnitSpinner.setOnItemSelectedListener(object : android.widget.AdapterView.OnItemSelectedListener {
+        windUnitSpinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
                 val windUnitValues = resources.getStringArray(R.array.wind_unit_values)
                 val selectedWindUnit = windUnitValues[position]
-                sharedPreferences.edit().putString("wind_unit", selectedWindUnit).apply()
+                sharedPreferences.edit { putString("wind_unit", selectedWindUnit) }
             }
+
             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
-        })
-        precisionSwitch.setOnCheckedChangeListener { _, isChecked ->
-            sharedPreferences.edit().putBoolean("show_decimal_temp", isChecked).apply()
         }
+        // precision switch removed; nothing to do here
         timeFormatSwitch.setOnCheckedChangeListener { _, isChecked ->
-            sharedPreferences.edit().putBoolean("use_24_hour_format", isChecked).apply()
+            sharedPreferences.edit { putBoolean("use_24_hour_format", isChecked) }
         }
         autoLocationSwitch.setOnCheckedChangeListener { _, isChecked ->
-            sharedPreferences.edit().putBoolean("auto_location_enabled", isChecked).apply()
+            sharedPreferences.edit { putBoolean("auto_location_enabled", isChecked) }
         }
         clearLocationsButton.setOnClickListener {
             // Clear saved locations in both SunwiseSettings and addressPref
-            sharedPreferences.edit().remove("saved_locations").apply()
+            sharedPreferences.edit { remove("saved_locations") }
             val addressPrefs = requireContext().getSharedPreferences("addressPref", Context.MODE_PRIVATE)
-            addressPrefs.edit().remove("saved_locations").apply()
+            addressPrefs.edit { remove("saved_locations") }
             Toast.makeText(requireContext(), "Saved locations cleared", Toast.LENGTH_SHORT).show()
         }
         feedbackButton.setOnClickListener {
-            val intent = Intent(Intent.ACTION_SENDTO).apply {
-                data = Uri.parse("mailto:")
-                putExtra(Intent.EXTRA_EMAIL, arrayOf("venomdevelopmentofficial@gmail.com"))
-                putExtra(Intent.EXTRA_SUBJECT, "Sunwise Feedback")
-            }
-            startActivity(Intent.createChooser(intent, "Send Feedback"))
+            val appPackageName: String? = "com.venomdevelopment.sunwise"
+            Log.d("SettingsFragment", "appPackageName:$appPackageName")
+            val marketIntent =
+                Intent(Intent.ACTION_VIEW, ("market://details?id=$appPackageName").toUri())
+            marketIntent.addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY or Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_MULTIPLE_TASK or Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(marketIntent)
         }
     }
 }

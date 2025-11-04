@@ -4,8 +4,7 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModel;
 
-import com.jjoe64.graphview.series.DataPoint;
-import com.jjoe64.graphview.series.LineGraphSeries;
+// GraphView types removed (no longer used)
 import android.content.Context;
 import android.util.Log;
 import android.widget.Toast;
@@ -31,9 +30,7 @@ public class WeatherViewModel extends ViewModel {
     private MutableLiveData<String> humidity = new MutableLiveData<>();
     private MutableLiveData<String> wind = new MutableLiveData<>();
     private MutableLiveData<String> precipitation = new MutableLiveData<>();
-    private MutableLiveData<LineGraphSeries<DataPoint>> hourlyGraphData = new MutableLiveData<>();
-    private MutableLiveData<LineGraphSeries<DataPoint>> dailyGraphDataDay = new MutableLiveData<>();
-    private MutableLiveData<LineGraphSeries<DataPoint>> dailyGraphDataNight = new MutableLiveData<>();
+    // GraphView LiveData removed; MPAndroidChart BarChart data is handled locally in fragments
 
     public static class WeatherSummary {
         public String temperature;
@@ -113,29 +110,7 @@ public class WeatherViewModel extends ViewModel {
         this.precipitation.setValue(precipitation);
     }
 
-    public LiveData<LineGraphSeries<DataPoint>> getHourlyGraphData() {
-        return hourlyGraphData;
-    }
-
-    public void setHourlyGraphData(LineGraphSeries<DataPoint> hourlyGraphData) {
-        this.hourlyGraphData.setValue(hourlyGraphData);
-    }
-
-    public LiveData<LineGraphSeries<DataPoint>> getDailyGraphDataDay() {
-        return dailyGraphDataDay;
-    }
-
-    public void setDailyGraphDataDay(LineGraphSeries<DataPoint> dailyGraphDataDay) {
-        this.dailyGraphDataDay.setValue(dailyGraphDataDay);
-    }
-
-    public LiveData<LineGraphSeries<DataPoint>> getDailyGraphDataNight() {
-        return dailyGraphDataNight;
-    }
-
-    public void setDailyGraphDataNight(LineGraphSeries<DataPoint> dailyGraphDataNight) {
-        this.dailyGraphDataNight.setValue(dailyGraphDataNight);
-    }
+    // GraphView-related getters/setters removed
 
     public void fetchWeatherForLocations(Context context, List<String> locations) {
         for (String location : locations) {
@@ -197,6 +172,10 @@ public class WeatherViewModel extends ViewModel {
                         return headers;
                     }
                 };
+                try {
+                    jsonArrayRequest.setShouldCache(false);
+                    if (requestQueue != null && requestQueue.getCache() != null) requestQueue.getCache().remove(geocodeUrl);
+                } catch (Exception ignored) {}
                 requestQueue.getCache().clear();
                 requestQueue.add(jsonArrayRequest);
             }
@@ -230,6 +209,10 @@ public class WeatherViewModel extends ViewModel {
                         return headers;
                     }
                 };
+                try {
+                    jsonObjectRequest.setShouldCache(false);
+                    if (requestQueue != null && requestQueue.getCache() != null) requestQueue.getCache().remove(geocodeUrl);
+                } catch (Exception ignored) {}
                 requestQueue.getCache().clear();
                 requestQueue.add(jsonObjectRequest);
             }
@@ -306,6 +289,10 @@ public class WeatherViewModel extends ViewModel {
                     return headers;
                 }
             };
+            try {
+                jsonArrayRequest.setShouldCache(false);
+                if (requestQueue != null && requestQueue.getCache() != null) requestQueue.getCache().remove(geocodeUrl);
+            } catch (Exception ignored) {}
             requestQueue.getCache().clear();
             requestQueue.add(jsonArrayRequest);
         }
@@ -341,6 +328,10 @@ public class WeatherViewModel extends ViewModel {
                 return headers;
             }
         };
+        try {
+            jsonObjectRequest.setShouldCache(false);
+            if (requestQueue != null && requestQueue.getCache() != null) requestQueue.getCache().remove(pointsUrl);
+        } catch (Exception ignored) {}
         requestQueue.getCache().clear();
         requestQueue.add(jsonObjectRequest);
     }
@@ -397,6 +388,10 @@ public class WeatherViewModel extends ViewModel {
                 return headers;
             }
         };
+        try {
+            jsonObjectRequest.setShouldCache(false);
+            if (requestQueue != null && requestQueue.getCache() != null) requestQueue.getCache().remove(forecastUrl);
+        } catch (Exception ignored) {}
         requestQueue.getCache().clear();
         requestQueue.add(jsonObjectRequest);
     }

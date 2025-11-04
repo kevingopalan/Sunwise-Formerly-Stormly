@@ -103,7 +103,6 @@ public class SavedLocationAdapter extends RecyclerView.Adapter<SavedLocationAdap
     private String formatTemperature(Context context, String tempStr) {
         SharedPreferences prefs = context.getSharedPreferences("SunwiseSettings", Context.MODE_PRIVATE);
         String unit = prefs.getString("unit", "us");
-        boolean showDecimal = prefs.getBoolean("show_decimal_temp", false);
         double tempVal;
         try {
             tempVal = Double.parseDouble(tempStr.replaceAll("[^\\d.-]", ""));
@@ -125,13 +124,8 @@ public class SavedLocationAdapter extends RecyclerView.Adapter<SavedLocationAdap
                 unitLabel = "°F";
                 break;
         }
-        if (showDecimal) {
-            DecimalFormat df = new DecimalFormat("#.#");
-            df.setRoundingMode(RoundingMode.HALF_UP);
-            return df.format(displayTemp) + unitLabel;
-        } else {
-            return Math.round(displayTemp) + unitLabel;
-        }
+        // Always round to whole numbers for a consumer-friendly display
+        return Math.round(displayTemp) + unitLabel;
     }
 
     private String extractAnimationNameFromIcon(String iconUrl) {

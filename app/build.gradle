@@ -55,8 +55,7 @@ dependencies {
     implementation 'androidx.recyclerview:recyclerview:1.4.0'
     //noinspection UseTomlInstead
     implementation 'androidx.core:core-ktx:1.17.0'
-    //noinspection UseTomlInstead
-    implementation 'com.jjoe64:graphview:4.2.2'
+    // GraphView removed; MPAndroidChart is used instead (dependency removed)
     //noinspection UseTomlInstead
     implementation "androidx.datastore:datastore-preferences:1.1.7"
     // optional - RxJava2 support

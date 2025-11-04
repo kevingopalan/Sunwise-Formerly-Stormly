@@ -1,4 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <color name="chart_low">#213d75</color>
+    <color name="chart_high">#522121</color>
+    <color name="chart_bar">#213d52</color>
+
+    <color name="df_low">#435fff</color>
+    <color name="df_high">#cc2121</color>
+
     <color name="statusbarcolor">#222222</color>
     <color name="md_theme_primary">#94CDF6</color>
     <color name="md_theme_onPrimary">#00344D</color>
@@ -125,7 +133,7 @@
     <color name="md_theme_primaryFixed_highContrast">#D1EAFF</color>
     <color name="md_theme_onPrimaryFixed_highContrast">#000000</color>
     <color name="md_theme_primaryFixedDim_highContrast">#98D1FB</color>
-    <color name="md_theme_onPrimaryFixedVariant_highContrast">#001827</color>
+    <color name="md_theme_onPrimaryFixedVariant_highContrast">#000000</color>
     <color name="md_theme_secondaryFixed_highContrast">#D7E9F9</color>
     <color name="md_theme_onSecondaryFixed_highContrast">#000000</color>
     <color name="md_theme_secondaryFixedDim_highContrast">#BBCDDD</color>

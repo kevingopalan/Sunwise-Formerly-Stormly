@@ -50,27 +50,6 @@
                 android:padding="20dp"
                 android:spinnerMode="dropdown" />
 
-            <!-- Temperature Precision -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_marginTop="20dp">
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Show Decimal Temperatures"
-                    android:fontFamily="@font/montsemibold"
-                    android:textColor="?attr/colorOnSurface"
-                    android:textSize="16dp" />
-                <Switch
-                    android:id="@+id/precisionSwitch"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" />
-            </LinearLayout>
-
             <!-- Time Format -->
             <LinearLayout
                 android:layout_width="match_parent"
