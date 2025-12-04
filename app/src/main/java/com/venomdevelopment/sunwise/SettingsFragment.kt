@@ -2,7 +2,6 @@ package com.venomdevelopment.sunwise
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.util.Log
@@ -15,8 +14,9 @@ import android.widget.Spinner
 import android.widget.Switch
 import android.widget.Toast
 import androidx.fragment.app.Fragment
-import androidx.core.net.toUri
 import androidx.core.content.edit
+import com.google.android.gms.tasks.Task
+import com.google.android.play.core.review.*
 
 @SuppressLint("UseSwitchCompatOrMaterialCode")
 class SettingsFragment : Fragment() {
@@ -27,6 +27,10 @@ class SettingsFragment : Fragment() {
     private lateinit var clearLocationsButton: Button
     private lateinit var feedbackButton: Button
     private lateinit var sharedPreferences: SharedPreferences
+
+    private lateinit var reviewManager: ReviewManager
+    private lateinit var reviewInfo: ReviewInfo
+
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -63,6 +67,7 @@ class SettingsFragment : Fragment() {
 
         loadSettings()
         setupListeners()
+        initReviewInfo()
         return rootView
     }
 
@@ -128,12 +133,29 @@ class SettingsFragment : Fragment() {
             Toast.makeText(requireContext(), "Saved locations cleared", Toast.LENGTH_SHORT).show()
         }
         feedbackButton.setOnClickListener {
-            val appPackageName: String? = "com.venomdevelopment.sunwise"
-            Log.d("SettingsFragment", "appPackageName:$appPackageName")
-            val marketIntent =
-                Intent(Intent.ACTION_VIEW, ("market://details?id=$appPackageName").toUri())
-            marketIntent.addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY or Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_MULTIPLE_TASK or Intent.FLAG_ACTIVITY_NEW_TASK)
-            startActivity(marketIntent)
+            startReviewFlow()
+        }
+    }
+
+    private fun initReviewInfo() {
+        reviewManager = ReviewManagerFactory.create(requireContext())
+        val manager = reviewManager.requestReviewFlow()
+
+        manager.addOnCompleteListener { task: Task<ReviewInfo?> ->
+            if (task.isSuccessful) {
+                reviewInfo = task.result!!
+            } else {
+                Log.d("InAppReview", "ReviewFlow failed to start")
+            }
+        }
+    }
+
+    private fun startReviewFlow() {
+        if (::reviewManager.isInitialized) {
+            val flow = reviewManager.launchReviewFlow(requireActivity(), reviewInfo)
+            flow.addOnCompleteListener {
+                Log.d("InAppReview", "Rating complete")
+            }
         }
     }
 }

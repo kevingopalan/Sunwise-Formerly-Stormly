@@ -6,31 +6,25 @@ import java.io.IOException
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
-import java.text.DateFormat
-import java.text.SimpleDateFormat
-import java.util.Date
+import java.util.regex.Pattern
 import kotlin.math.min
 
 class SnowDayCalculator(
     val zipcode: String,
     val snowdays: Int,
-    val schoolType: SchoolType,
-    private val theday: Int
+    val schoolType: SchoolType
 ) {
     private val BASE_URL = "https://www.snowdaycalculator.com/prediction.php"
 
-
     @get:Throws(IOException::class)
-    val prediction: Long
+    val predictions: Map<String, Long>
         /**
          * Fetches the prediction from the website and parses the result.
          * @return Prediction value, which can be larger than 99 or less than 0.
          * @throws IOException
          */
         get() {
-            val format: DateFormat = SimpleDateFormat("yyyyMMdd")
-            val date = Date()
-            val dateInt = format.format(date).toInt() + theday
+            val predictions = mutableMapOf<String, Long>()
 
             // Construct the URL to fetch the prediction data
             var url =
@@ -95,28 +89,19 @@ class SnowDayCalculator(
             )
 
             // Now, you can parse the HTML content to find the prediction
-            val predictionKeyword = "theChance[$dateInt]"
+            val pattern = Pattern.compile("""theChance\[(\d{8})\]\s*=\s*([\d.]+);""")
 
-            // Check if the prediction keyword exists in the HTML content
-            var chance: Long = 0
-            if (html.contains(predictionKeyword)) {
-                val startIndex = html.indexOf(predictionKeyword)
-                val endIndex = html.indexOf(";", startIndex)
-                if (startIndex != -1 && endIndex != -1) {
-                    val predictionString = html.substring(startIndex, endIndex)
-                    try {
-                        // Extract the prediction number
-                        val parts =
-                            predictionString.split("=".toRegex()).dropLastWhile { it.isEmpty() }
-                                .toTypedArray()
-                        chance = Math.round(parts[1].trim { it <= ' ' }.toDouble())
-                    } catch (e: Exception) {
-                        Log.e("Parsing Error", "Error parsing chance", e)
-                    }
+            val matcher = pattern.matcher(html)
+
+            while (matcher.find()) {
+                val date = matcher.group(1)
+                val chance = matcher.group(2)?.toDouble()?.let { Math.round(it) }
+                if (date != null && chance != null) {
+                    predictions[date] = chance
                 }
             }
 
-            return chance
+            return predictions
         }
 
     enum class SchoolType(val extra: Double) {

@@ -3,6 +3,7 @@ package com.venomdevelopment.sunwise;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -16,6 +17,14 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.LinearLayout;
+import android.app.AlertDialog;
+import android.widget.EditText;
+import android.widget.Spinner;
+import android.widget.ArrayAdapter;
+import android.app.ProgressDialog;
+import android.view.inputmethod.InputMethodManager;
+import android.content.DialogInterface;
+import android.view.inputmethod.InputMethodManager;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -40,6 +49,7 @@ import com.github.mikephil.charting.data.BarEntry;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
+import com.github.mikephil.charting.formatter.ValueFormatter;
 import com.github.mikephil.charting.renderer.BarChartRenderer;
 import com.github.mikephil.charting.utils.Transformer;
 import com.github.mikephil.charting.interfaces.datasets.IBarDataSet;
@@ -99,7 +109,7 @@ public class ForecastFragment extends Fragment {
 
     private String tempUnit = "us";
     private String windUnit = "mph";
-    private boolean use24HourFormat = false;
+    private boolean use24HourFormat;
     private SharedPreferences sunwisePrefs;
 
     private final Set<String> processedGeocodeAddresses = new HashSet<>();
@@ -109,6 +119,11 @@ public class ForecastFragment extends Fragment {
     private FloatingActionButton reloadFab;
     private BarChart hourlyBarChart;
     private BarChart dailyBarChart;
+    private BarChart snowdayBarChart;
+    // Snow day widget
+    private View snowDayWidgetContainer;
+    private TextView snowDayWidgetPrediction;
+    private TextView snowDayWidgetTitle;
 
     public String getPreferenceValue() {
         return sunwisePrefs.getString("address", "");
@@ -268,6 +283,9 @@ public class ForecastFragment extends Fragment {
     // Setup charts with proper styling and fonts
     setupGraphs();
 
+    // Setup snow day widget
+    setupSnowDayWidget(view);
+
         // Get location from arguments or preferences
         Bundle args = getArguments();
         if (args != null && args.containsKey("location")) {
@@ -289,6 +307,162 @@ public class ForecastFragment extends Fragment {
         // Old GraphView removed; MPAndroidChart styling is applied where charts are configured.
 
         // GraphView observers removed (GraphView UI replaced by MPAndroidChart BarCharts).
+    }
+
+    private void setupSnowDayWidget(View root) {
+        try {
+            // Bind views from included layout
+            snowDayWidgetContainer = root.findViewById(R.id.snow_day_widget);
+            snowDayWidgetPrediction = root.findViewById(R.id.snow_day_widget_prediction);
+            snowDayWidgetTitle = root.findViewById(R.id.snow_day_widget_title);
+            if (snowDayWidgetContainer == null || snowDayWidgetPrediction == null) return;
+            // Inline inputs (snowdays + school type) and bar chart
+            EditText snowdaysInput = root.findViewById(R.id.snowdays_input);
+            Spinner schoolTypeSpinner = root.findViewById(R.id.snowday_schooltype);
+            Button calculateBtn = root.findViewById(R.id.snowday_calculate_button);
+            snowdayBarChart = root.findViewById(R.id.snowday_bar_chart);
+
+            // Setup spinner options
+            try {
+                ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(requireContext(), R.array.school_types, android.R.layout.simple_spinner_item);
+                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                schoolTypeSpinner.setAdapter(adapter);
+            } catch (Exception ignored) {}
+
+            calculateBtn.setOnClickListener(v -> {
+                String zipcode = getCurrentZipcode();
+                if (zipcode == null || zipcode.isEmpty()) {
+                    Toast.makeText(getContext(), "Couldn't get zipcode", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                int days = 0;
+                try { days = Integer.parseInt(snowdaysInput.getText().toString().trim()); } catch (Exception ignored) {}
+                com.venomdevelopment.sunwise.SnowDayCalculator.SchoolType schoolType = com.venomdevelopment.sunwise.SnowDayCalculator.SchoolType.values()[schoolTypeSpinner.getSelectedItemPosition()];
+                new SnowDayAsyncTask(zipcode, days, schoolType).execute();
+            });
+
+            // Do not auto-run at startup using potentially stale stored zipcode.
+            // Instead, when the app receives a geocoded location we will save the zipcode
+            // and trigger the snow-day calculation from updateLocationDisplay(...).
+        } catch (Exception e) {
+            Log.e(TAG, "Error setting up snow day widget", e);
+        }
+    }
+
+    // AsyncTask to call Kotlin SnowDayCalculator and update UI
+    private class SnowDayAsyncTask extends android.os.AsyncTask<Void, Void, java.util.Map<String, Long>> {
+        private final String zipcode;
+        private final int snowdays;
+        private final com.venomdevelopment.sunwise.SnowDayCalculator.SchoolType schoolType;
+        private Exception error;
+
+        SnowDayAsyncTask(String zipcode, int snowdays, com.venomdevelopment.sunwise.SnowDayCalculator.SchoolType schoolType) {
+            this.zipcode = zipcode;
+            this.snowdays = snowdays;
+            this.schoolType = schoolType;
+        }
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            if (snowDayWidgetPrediction != null) snowDayWidgetPrediction.setText("Loading...");
+            showLoading();
+        }
+
+        @Override
+        protected java.util.Map<String, Long> doInBackground(Void... voids) {
+            try {
+                // Call Kotlin class directly
+                com.venomdevelopment.sunwise.SnowDayCalculator calc = new com.venomdevelopment.sunwise.SnowDayCalculator(zipcode, snowdays, schoolType);
+                return calc.getPredictions();
+            } catch (Exception e) {
+                Log.e(TAG, "SnowDay calculation failed", e);
+                this.error = e;
+                return new java.util.HashMap<>();
+            }
+        }
+
+        @Override
+        protected void onPostExecute(java.util.Map<String, Long> result) {
+            hideLoading();
+            if (!isAdded()) return;
+            try {
+                java.text.SimpleDateFormat dateFormat = new java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.getDefault());
+                java.util.Calendar cal = java.util.Calendar.getInstance();
+                String today = dateFormat.format(cal.getTime());
+                Long pToday = result.get(today);
+                cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
+                String tomorrow = dateFormat.format(cal.getTime());
+                Long pTomorrow = result.get(tomorrow);
+                cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
+                String twoDays = dateFormat.format(cal.getTime());
+                Long pTwo = result.get(twoDays);
+                // Update textual summary
+                String display = "Today: " + (pToday != null ? (pToday < 0 ? "Limited" : pToday + "%") : "N/A")
+                    + "\nTomorrow: " + (pTomorrow != null ? (pTomorrow < 0 ? "Limited" : pTomorrow + "%") : "N/A")
+                    + "\nDay After: " + (pTwo != null ? (pTwo < 0 ? "Limited" : pTwo + "%") : "N/A");
+                if (snowDayWidgetPrediction != null) snowDayWidgetPrediction.setText(display);
+
+                // Build bar chart entries (use 0 for N/A or Limited values)
+                if (snowdayBarChart != null) {
+                    java.util.ArrayList<BarEntry> entries = new java.util.ArrayList<>();
+                    float todayVal = (pToday != null && pToday >= 0) ? pToday.floatValue() : 0f;
+                    float tomorrowVal = (pTomorrow != null && pTomorrow >= 0) ? pTomorrow.floatValue() : 0f;
+                    float twoVal = (pTwo != null && pTwo >= 0) ? pTwo.floatValue() : 0f;
+                    entries.add(new BarEntry(0f, todayVal));
+                    entries.add(new BarEntry(1f, tomorrowVal));
+                    entries.add(new BarEntry(2f, twoVal));
+
+                    BarDataSet set = new BarDataSet(entries, "Snow Day Chance");
+                    int barColor = ContextCompat.getColor(requireContext(), R.color.df_low);
+                    set.setColor(barColor);
+                    set.setDrawValues(true);
+                    set.setValueTextSize(12f);
+                    set.setValueTextColor(ContextCompat.getColor(requireContext(), android.R.color.white));
+                    android.graphics.Typeface montsemibold = ResourcesCompat.getFont(getContext(), R.font.montsemibold);
+                    set.setValueTypeface(montsemibold);
+
+                    BarData data = new BarData(set);
+                    data.setBarWidth(0.6f);
+                    snowdayBarChart.setData(data);
+
+                    java.util.ArrayList<String> labels = new java.util.ArrayList<>();
+                    labels.add("Today"); labels.add("Tomorrow"); labels.add("Day After");
+
+                    XAxis x = snowdayBarChart.getXAxis();
+                    x.setGranularity(1f);
+                    x.setPosition(XAxis.XAxisPosition.BOTTOM);
+                    x.setDrawGridLines(false);
+                    x.setValueFormatter(new IndexAxisValueFormatter(labels));
+                    x.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.white));
+                    x.setTextSize(12f);
+
+                    YAxis y = snowdayBarChart.getAxisLeft();
+                    y.setDrawGridLines(false);
+                    y.setAxisMinimum(0f);
+                    y.setAxisMaximum(100f);
+                    y.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.white));
+                    y.setTextSize(12f);
+                    y.setValueFormatter(new ValueFormatter() {
+                        @Override
+                        public String getFormattedValue(float value) {
+                            return Math.round(Double.parseDouble(super.getFormattedValue(value))) + "%";
+                        }
+                    });
+                    setTypefaceIfAvailable(x, R.font.montsemibold);
+                    setTypefaceIfAvailable(y, R.font.montsemibold);
+                    snowdayBarChart.setRenderer(new RoundedBarChartRenderer(snowdayBarChart, snowdayBarChart.getAnimator(), snowdayBarChart.getViewPortHandler(), Utils.convertDpToPixel(8f)));
+                    snowdayBarChart.getAxisRight().setEnabled(false);
+                    snowdayBarChart.getLegend().setEnabled(false);
+                    snowdayBarChart.getDescription().setEnabled(false);
+                    snowdayBarChart.setFitBars(true);
+                    snowdayBarChart.invalidate();
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error updating snow day UI", e);
+                if (snowDayWidgetPrediction != null) snowDayWidgetPrediction.setText("Error");
+            }
+        }
     }
 
     private void fetchGeocodingData(String address) {
@@ -433,7 +607,7 @@ public class ForecastFragment extends Fragment {
                 headers.put("Cache-Control", "no-cache");
                 headers.put("Pragma", "no-cache");
                 headers.put("Expires", "0");
-                Log.d(TAG, "Request headers: " + headers.toString());
+                Log.d(TAG, "Request headers: " + headers);
                 return headers;
             }
         };
@@ -487,7 +661,7 @@ public class ForecastFragment extends Fragment {
                 headers.put("Cache-Control", "no-cache");
                 headers.put("Pragma", "no-cache");
                 headers.put("Expires", "0");
-                Log.d(TAG, "Request headers: " + headers.toString());
+                Log.d(TAG, "Request headers: " + headers);
                 return headers;
             }
         };
@@ -574,13 +748,13 @@ public class ForecastFragment extends Fragment {
                 headers.put("Cache-Control", "no-cache");
                 headers.put("Pragma", "no-cache");
                 headers.put("Expires", "0");
-                Log.d(TAG, "Request headers: " + headers.toString());
+                Log.d(TAG, "Request headers: " + headers);
                 return headers;
             }
             @Override
             protected Response<JSONObject> parseNetworkResponse(NetworkResponse response) {
                 if (response != null && response.headers != null) {
-                    Log.d(TAG, "Response headers: " + response.headers.toString());
+                    Log.d(TAG, "Response headers: " + response.headers);
                 }
                 return super.parseNetworkResponse(response);
             }
@@ -710,6 +884,12 @@ public class ForecastFragment extends Fragment {
                             dy.setDrawGridLines(false);
                             dy.setTextColor(colorOnSurface);
                             dy.setTextSize(12f);
+                            dy.setValueFormatter(new ValueFormatter() {
+                                @Override
+                                public String getFormattedValue(float value) {
+                                    return Math.round(Double.parseDouble(super.getFormattedValue(value))) + "º";
+                                }
+                            });
                             setTypefaceIfAvailable(dy, R.font.montsemibold);
                             if (!dailyBarEntries.isEmpty()) {
                                 // For stacked bars we need the min of the lower segments and the max total value
@@ -988,13 +1168,13 @@ public class ForecastFragment extends Fragment {
                 headers.put("Cache-Control", "no-cache");
                 headers.put("Pragma", "no-cache");
                 headers.put("Expires", "0");
-                Log.d(TAG, "Request headers: " + headers.toString());
+                Log.d(TAG, "Request headers: " + headers);
                 return headers;
             }
             @Override
             protected Response<JSONObject> parseNetworkResponse(NetworkResponse response) {
                 if (response != null && response.headers != null) {
-                    Log.d(TAG, "Response headers: " + response.headers.toString());
+                    Log.d(TAG, "Response headers: " + response.headers);
                 }
                 return super.parseNetworkResponse(response);
             }
@@ -1210,7 +1390,12 @@ public class ForecastFragment extends Fragment {
                             leftAxis.setTextColor(colorOnSurface);
                             leftAxis.setTextSize(12f);
                             setTypefaceIfAvailable(leftAxis, R.font.montsemibold);
-
+                            leftAxis.setValueFormatter(new ValueFormatter() {
+                                @Override
+                                public String getFormattedValue(float value) {
+                                    return Math.round(Double.parseDouble(super.getFormattedValue(value))) + "º";
+                                }
+                            });
                             // compute min and max Y from entries and set axis limits with padding so labels can be drawn above bars
                             if (!barEntries.isEmpty()) {
                                 float minY = Float.MAX_VALUE;
@@ -1238,7 +1423,7 @@ public class ForecastFragment extends Fragment {
                             // show a window of ~6 items so user can scroll horizontally
                             hourlyBarChart.setVisibleXRangeMaximum(6f);
                             // ensure bars have space and view starts at 0
-                            hourlyBarChart.moveViewToX(0f);
+                            hourlyBarChart.moveViewToX(-1f);
 
                             // Apply rounded corners renderer
                             float radiusDp = 16f; // adjust as needed
@@ -1299,13 +1484,13 @@ public class ForecastFragment extends Fragment {
                 headers.put("Cache-Control", "no-cache");
                 headers.put("Pragma", "no-cache");
                 headers.put("Expires", "0");
-                Log.d(TAG, "Request headers: " + headers.toString());
+                Log.d(TAG, "Request headers: " + headers);
                 return headers;
             }
             @Override
             protected Response<JSONObject> parseNetworkResponse(NetworkResponse response) {
                 if (response != null && response.headers != null) {
-                    Log.d(TAG, "Response headers: " + response.headers.toString());
+                    Log.d(TAG, "Response headers: " + response.headers);
                 }
                 return super.parseNetworkResponse(response);
             }
@@ -1372,7 +1557,7 @@ public class ForecastFragment extends Fragment {
             String unitLabel = "mph";
             switch (unit) {
                 case "si":
-                    ms = ms; unitLabel = "m/s"; break;
+                    unitLabel = "m/s"; break;
                 case "ca":
                     ms = ms * 3.6; unitLabel = "km/h"; break;
                 case "uk":
@@ -1406,6 +1591,52 @@ public class ForecastFragment extends Fragment {
         if (locationDisplay != null && isAdded()) {
             locationDisplay.setText(location);
         }
+
+        // Attempt to extract a 5-digit US zipcode from the geocoded location string.
+        // If found, save it into the shared preferences used by the snow-day widget
+        // and trigger an update of the widget if it is already initialized.
+        try {
+            if (location != null) {
+                java.util.regex.Pattern p = java.util.regex.Pattern.compile("(\\d{5})");
+                java.util.regex.Matcher m = p.matcher(location);
+                if (m.find()) {
+                    String zip = m.group(1);
+                    if (sunwisePrefs != null) {
+                        String oldZip = sunwisePrefs.getString("zipcode", "");
+                        if (oldZip == null || !oldZip.equals(zip)) {
+                            SharedPreferences.Editor editor = sunwisePrefs.edit();
+                            editor.putString("zipcode", zip);
+                            editor.apply();
+                        }
+                    }
+                    // If the snow-day widget has been set up, auto-run the calculation
+                    // using the freshly obtained zipcode (use PUBLIC school type and 1 day by default).
+                    if (isAdded() && snowDayWidgetPrediction != null) {
+                        try {
+                            new SnowDayAsyncTask(zip, 1, com.venomdevelopment.sunwise.SnowDayCalculator.SchoolType.PUBLIC).execute();
+                        } catch (Exception ignored) {}
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private String getCurrentZipcode() {
+        // Prefer stored zipcode in preferences
+        if (sunwisePrefs != null) {
+            String z = sunwisePrefs.getString("zipcode", "");
+            if (z != null && !z.isEmpty()) return z;
+        }
+        // Fallback: try to extract a 5-digit zipcode from the location display text
+        if (locationDisplay != null) {
+            try {
+                String text = locationDisplay.getText().toString();
+                java.util.regex.Pattern p = java.util.regex.Pattern.compile("(\\d{5})");
+                java.util.regex.Matcher m = p.matcher(text);
+                if (m.find()) return m.group(1);
+            } catch (Exception ignored) {}
+        }
+        return "";
     }
 
     private void setTypefaceIfAvailable(AxisBase axis, int fontResId) {

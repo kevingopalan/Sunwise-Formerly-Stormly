@@ -8,34 +8,34 @@ class SnowDayTask(
     private val zipcode: String,
     private val snowdays: Int,
     private val schoolType: SchoolType,
-    private val theday: Int,
     private val listener: OnPredictionReceivedListener?
 ) :
-    AsyncTask<Void?, Void?, Long>() {
-    override fun doInBackground(vararg p0: Void?): Long? {
+    AsyncTask<Void?, Void?, Map<String, Long>>() {
+    override fun doInBackground(vararg p0: Void?): Map<String, Long>? {
         try {
             // Create a SnowDayCalculator object and get the prediction
             val calculator = SnowDayCalculator(
                 zipcode,
                 snowdays,
-                schoolType,
-                theday
+                schoolType
             )
-            return calculator.prediction
+            return calculator.predictions
         } catch (e: Exception) {
             Log.e("SnowDayTask", "Error getting snow day prediction", e)
-            return 0L
+            return emptyMap()
         }
     }
 
-    override fun onPostExecute(result: Long) {
+    override fun onPostExecute(result: Map<String, Long>?) {
         super.onPostExecute(result)
 
         // Return the result back to the listener on the main thread
-        listener?.onPredictionReceived(result)
+        if (result != null) {
+            listener?.onPredictionReceived(result)
+        }
     }
 
     interface OnPredictionReceivedListener {
-        fun onPredictionReceived(prediction: Long)
+        fun onPredictionReceived(predictions: Map<String, Long>)
     }
 }

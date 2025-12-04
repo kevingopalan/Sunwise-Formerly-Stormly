@@ -940,9 +940,7 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
                 address,
                 USER_AGENT,
                 "us",
-                new GeocodingRetryManager.GeocodingSuccessCallback() {
-                    @Override
-                    public void onSuccess(GeocodingResponseParser.GeocodingResult usResult) {
+                    usResult -> {
                         if (!isAdded() || getActivity() == null) return;
                         String usCountryCode = usResult.getCountryCode();
                         String usDisplayName = usResult.getDisplayName();
@@ -950,7 +948,7 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
                         // Always show zip code warning dialog
                         String message = "You searched for a zip code: '" + address + "'.\n" +
                             "Location found: '" + usDisplayName + "' (" + (usCountryCode != null ? usCountryCode.toUpperCase() : "Unknown") + ").";
-                        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                        new AlertDialog.Builder(requireContext())
                             .setTitle("Zip Code Search")
                             .setMessage(message)
                             .setPositiveButton("OK", (dialog, which) -> {
@@ -962,17 +960,13 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
                             })
                             .setCancelable(false)
                             .show();
-                    }
-                },
-                new GeocodingRetryManager.GeocodingFailureCallback() {
-                    @Override
-                    public void onFailure(String errorMessage) {
+                    },
+                    errorMessage -> {
                         if (!isAdded() || getActivity() == null) return;
                         hideLoading();
                         Log.e(TAG, "Zipcode geocoding failed after retries for country check (address: '" + address + "'): " + errorMessage);
                         showNominatimErrorDialog("Could not verify zipcode location. Please try again. Error: " + errorMessage);
                     }
-                }
             );
             return;
         }
@@ -1031,6 +1025,94 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
             }
         );
     }
+
+    private void checkCountryWithReturn(String address) {
+        if (!isAdded() || getActivity() == null || address == null || address.trim().isEmpty()) {
+            if (address != null && !address.trim().isEmpty()) {
+                Toast.makeText(requireContext(), "Please enter a valid address", Toast.LENGTH_SHORT).show();
+            }
+            return;
+        }
+        showLoading();
+        Log.d(TAG, "Checking country for address (with retry): " + address);
+        // 1. Zip code check
+        if (address.matches("\\d{5}")) {
+            GeocodingRetryManager.geocodeWithRetry(
+                    requireContext(),
+                    address,
+                    USER_AGENT,
+                    "us",
+                    usResult -> {
+                        if (!isAdded() || getActivity() == null) return;
+                        String usCountryCode = usResult.getCountryCode();
+                        String usDisplayName = usResult.getDisplayName();
+                        Log.d(TAG, "Zipcode geocoding for current location click success. Address: '" + address + "', DisplayName: '" + usDisplayName + "', Country Code: '" + usCountryCode + "'");
+                    },
+                    errorMessage -> {
+                        if (!isAdded() || getActivity() == null) return;
+                        hideLoading();
+                        Log.e(TAG, "Zipcode geocoding failed after retries for country check (address: '" + address + "'): " + errorMessage);
+                        showNominatimErrorDialog("Could not verify zipcode location. Please try again. Error: " + errorMessage);
+                    }
+            );
+            return;
+        }
+        // 2. Geocode with countrycodes=us
+        GeocodingRetryManager.geocodeWithRetry(
+                requireContext(),
+                address,
+                USER_AGENT,
+                "us",
+                new GeocodingRetryManager.GeocodingSuccessCallback() {
+                    @Override
+                    public void onSuccess(GeocodingResponseParser.GeocodingResult usResult) {
+                        if (!isAdded() || getActivity() == null) return;
+                        String usCountryCode = usResult.getCountryCode();
+                        String usDisplayName = usResult.getDisplayName();
+                        Log.d(TAG, "Geocoding (countrycodes=us) success. Address: '" + address + "', DisplayName: '" + usDisplayName + "', Country Code: '" + usCountryCode + "'");
+                        // Now run second geocode without countrycodes for comparison only
+                        GeocodingRetryManager.geocodeWithRetry(
+                                requireContext(),
+                                address,
+                                USER_AGENT,
+                                null,
+                                new GeocodingRetryManager.GeocodingSuccessCallback() {
+                                    @Override
+                                    public void onSuccess(GeocodingResponseParser.GeocodingResult globalResult) {
+                                        if (!isAdded() || getActivity() == null) return;
+                                        String globalCountryCode = globalResult.getCountryCode();
+                                        String globalDisplayName = globalResult.getDisplayName();
+                                        Log.d(TAG, "Geocoding (no countrycodes) success. Address: '" + address + "', DisplayName: '" + globalDisplayName + "', Country Code: '" + globalCountryCode + "'");
+                                        // Show dialog with both results, but always use US result
+                                        showDualLocationDialog(usDisplayName, usCountryCode, globalDisplayName, globalCountryCode);
+                                        hideLoading();
+                                    }
+                                },
+                                new GeocodingRetryManager.GeocodingFailureCallback() {
+                                    @Override
+                                    public void onFailure(String errorMessage) {
+                                        if (!isAdded() || getActivity() == null) return;
+                                        hideLoading();
+                                        Log.e(TAG, "Global geocoding failed after retries for country check (address: '" + address + "'): " + errorMessage);
+                                        // Show dialog with only US result
+                                        showDualLocationDialog(usDisplayName, usCountryCode, usDisplayName, usCountryCode);
+                                    }
+                                }
+                        );
+                    }
+                },
+                new GeocodingRetryManager.GeocodingFailureCallback() {
+                    @Override
+                    public void onFailure(String errorMessage) {
+                        if (!isAdded() || getActivity() == null) return;
+                        hideLoading();
+                        Log.e(TAG, "Geocoding failed after retries for country check (address: '" + address + "'): " + errorMessage);
+                        showNominatimErrorDialog("Could not verify location. Is the location in the United States? Error: " + errorMessage);
+                    }
+                }
+        );
+    }
+
 
     private void showDualLocationDialog(String usDisplayName, String usCountryCode, String globalDisplayName, String globalCountryCode) {
         if (!isAdded() || getActivity() == null) return;
