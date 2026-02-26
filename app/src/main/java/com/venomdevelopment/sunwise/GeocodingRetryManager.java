@@ -36,9 +36,9 @@ public class GeocodingRetryManager {
         }
         String workingHostUrl = NominatimHostManager.getWorkingHostUrl();
         if (workingHostUrl == null) {
-            NominatimHostManager.setDynamicMaxRetryAttempts(8);
+            NominatimHostManager.setDynamicMaxRetryAttempts(4);
         } else {
-            NominatimHostManager.setDynamicMaxRetryAttempts(16);
+            NominatimHostManager.setDynamicMaxRetryAttempts(8);
         }
         geocodeWithRetry(context, address, userAgent, countrycodes, successCallback, failureCallback, 0);
     }
@@ -212,11 +212,9 @@ public class GeocodingRetryManager {
         // Determine host state and set retry attempts
         String workingHostUrl = NominatimHostManager.getWorkingHostUrl();
         if (workingHostUrl == null) {
-            // Unknown host state, use 8 attempts
-            NominatimHostManager.setDynamicMaxRetryAttempts(8);
+            NominatimHostManager.setDynamicMaxRetryAttempts(4);
         } else {
-            // Known working host, use 16 attempts
-            NominatimHostManager.setDynamicMaxRetryAttempts(16);
+            NominatimHostManager.setDynamicMaxRetryAttempts(8);
         }
         geocodeWithRetry(context, address, userAgent, successCallback, failureCallback, 0);
     }

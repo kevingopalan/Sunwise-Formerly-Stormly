@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.*
 import androidx.fragment.app.Fragment
+import com.github.mikephil.charting.charts.BarChart
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -21,6 +22,7 @@ class SnowDayFragment : Fragment() {
     private lateinit var dayOne: TextView
     private lateinit var dayTwo: TextView
     private lateinit var dayThree: TextView
+    private lateinit var snowdayBarChart: BarChart
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -39,6 +41,7 @@ class SnowDayFragment : Fragment() {
         dayOne = rootView.findViewById(R.id.dayOne)
         dayTwo = rootView.findViewById(R.id.dayTwo)
         dayThree = rootView.findViewById(R.id.dayThree)
+        snowdayBarChart = rootView.findViewById(R.id.snowday_bar_chart)
 
         val calendar = Calendar.getInstance()
         val sdf = SimpleDateFormat("EEEE", Locale.getDefault())

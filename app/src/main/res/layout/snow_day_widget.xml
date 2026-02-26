@@ -74,8 +74,9 @@
                 android:paddingStart="16dp"
                 android:paddingEnd="16dp"
                 android:background="@drawable/main_background"
-                android:backgroundTint="@drawable/main_background"
-                app:backgroundTint="@drawable/main_background"/>
+                android:backgroundTint="?attr/colorSurfaceContainer"
+                app:backgroundTint="?attr/colorSurfaceContainer"
+                android:textColor="?attr/colorOnSurface"/>
 
         </LinearLayout>
 

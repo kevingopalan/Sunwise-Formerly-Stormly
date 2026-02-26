@@ -37,9 +37,7 @@ import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.JsonArrayRequest;
 import com.android.volley.toolbox.JsonObjectRequest;
-import com.android.volley.toolbox.Volley;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -50,7 +48,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLocationClickListener {
     // Store filtered US locations for weather and display
@@ -98,7 +95,7 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
     private static final int MAX_WEATHER_RELOADS = 8;
     private static final int RELOAD_DELAY_MS = 500; // 2 seconds between retries
     private final Set<String> processedGeocodeAddresses = new HashSet<>();
-    
+
     // Location timeout tracking
     private static final int LOCATION_TIMEOUT_MS = 5000; // 5 seconds
     private boolean isLocationDetectionInProgress = false;
@@ -122,12 +119,6 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
         if (!isAdded() || getActivity() == null) return new HashSet<>();
         SharedPreferences prefs = requireActivity().getSharedPreferences(myPref, 0);
         return prefs.getStringSet(PREF_SAVED_LOCATIONS, new HashSet<>());
-    }
-
-    private void saveSavedLocations(Set<String> locations) {
-        SharedPreferences.Editor editor = requireActivity().getSharedPreferences(myPref, 0).edit();
-        editor.putStringSet(PREF_SAVED_LOCATIONS, locations);
-        editor.apply();
     }
 
     @Nullable
@@ -303,7 +294,7 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
 
         // Show loading initially
         showLoading();
-        
+
         // Start the retry logic for weather data
         // Even if no saved locations, we might have detected location coming
         startWeatherDataRetry();
@@ -441,16 +432,6 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
         requestQueue.add(request);
         }
 
-    private void updateSavedLocations(String location) {
-        if (!isAdded() || getActivity() == null) return;
-        Set<String> savedSet = getSavedLocations();
-        if (savedSet.remove(location)) {
-            savedSet.add(location); // Move to top
-            saveSavedLocations(savedSet);
-            loadSavedLocations(); // Reload to update the order and reset search
-        }
-    }
-
     private boolean checkLocationPermission() {
         return ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
     }
@@ -478,7 +459,7 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
             isLocationDetectionInProgress = true;
             locationDetectionStartTime = System.currentTimeMillis();
             hasLocationTimeoutOccurred = false;
-            
+
             // Set up location timeout
             reloadHandler.postDelayed(() -> {
                 if (isLocationDetectionInProgress && !hasLocationTimeoutOccurred) {
@@ -487,7 +468,7 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
                     hideLoading();
                 }
             }, LOCATION_TIMEOUT_MS);
-            
+
             detectedLocationAdapter.notifyDataSetChanged();
             locationManager.requestSingleUpdate(LocationManager.FUSED_PROVIDER, locationListener, null);
         } else {
@@ -500,9 +481,9 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
         public void onLocationChanged(@NonNull Location location) {
             // Stop location detection tracking
             isLocationDetectionInProgress = false;
-            
+
             Log.d(TAG, "Location detected after " + (System.currentTimeMillis() - locationDetectionStartTime) + "ms");
-            
+
             reverseGeocode(location.getLatitude(), location.getLongitude());
             locationManager.removeUpdates(this);
         }
@@ -716,7 +697,7 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
     public void onLocationClick(String location) {
         // Save the selected location to SharedPreferences
         writeToPreference(location);
-        setLocationAndNavigateToForecast(location);
+        checkCountryAndProceed(location);
     }
 
     private void showLoading() {
@@ -741,24 +722,6 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
         }
     }
 
-    private void checkAndHideLoadingUI() {
-        // This method is now only used for geocoding completion
-        // Weather data loading is handled by the retry logic
-        boolean detectedReady = false;
-        Log.d("HomeFragment", String.valueOf(detectedLocationList));
-        if (!detectedLocationList.isEmpty() && detectedLocationList.get(0) != null) {
-            String locationText = detectedLocationList.get(0);
-            detectedReady = !locationText.equals("N/A") && !locationText.equals("--") && !locationText.isEmpty();
-            Log.d("HomeFragment", "Detected location ready: " + detectedReady);
-        }
-
-        // Only hide loading if we have detected location and no weather retry is in progress
-        if (detectedReady && weatherReloadAttempts >= MAX_WEATHER_RELOADS) {
-            Log.d("HomeFragment", "Geocoding complete and weather retry finished, checking if we can hide spinner");
-            // The weather retry logic will handle hiding the spinner when data is available
-        }
-    }
-
     private void startWeatherDataRetry() {
         weatherReloadAttempts = 0;
         Log.d(TAG, "Starting weather data retry logic");
@@ -779,12 +742,12 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
             }
             return;
         }
-        
+
         Log.d(TAG, "Weather data fetch attempt " + (weatherReloadAttempts + 1) + " of " + MAX_WEATHER_RELOADS);
-        
+
         // Get current weather data to check what we already have
         Map<String, WeatherViewModel.WeatherSummary> currentMap = weatherViewModel.getLocationWeatherMap().getValue();
-        
+
 
         // Asynchronously filter allLocations to only US locations using geocoding with countrycodes=us
         allLocations.addAll(usSavedLocationsList);
@@ -810,9 +773,9 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
         // Track those needing weather
         List<String> locationsNeedingWeather = new ArrayList<>();
         for (String location : allLocations) {
-            if (currentMap == null || currentMap.get(location) == null || 
-                currentMap.get(location).temperature == null || 
-                currentMap.get(location).temperature.isEmpty() || 
+            if (currentMap == null || currentMap.get(location) == null ||
+                currentMap.get(location).temperature == null ||
+                currentMap.get(location).temperature.isEmpty() ||
                 currentMap.get(location).temperature.equals("--")) {
                 locationsNeedingWeather.add(location);
             }
@@ -820,7 +783,7 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
         if (!locationsNeedingWeather.isEmpty()) {
             weatherViewModel.fetchWeatherForLocations(requireContext(), locationsNeedingWeather);
         }
-        
+
         // Check if we have data after a longer delay to give API time to respond
         reloadHandler.postDelayed(() -> {
             if (!isAdded() || getActivity() == null) return;
@@ -876,8 +839,6 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
     }
 
     private boolean locationLoadingComplete() {
-        // Implement logic to check if all location loading (from storage/geocoding) is finished
-        // For now, return true if completed[0] == savedSet.size() or similar
         return true; // TODO: Replace with actual check if needed
     }
 
@@ -976,9 +937,7 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
             address,
             USER_AGENT,
             "us",
-            new GeocodingRetryManager.GeocodingSuccessCallback() {
-                @Override
-                public void onSuccess(GeocodingResponseParser.GeocodingResult usResult) {
+                usResult -> {
                     if (!isAdded() || getActivity() == null) return;
                     String usCountryCode = usResult.getCountryCode();
                     String usDisplayName = usResult.getDisplayName();
@@ -989,9 +948,7 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
                         address,
                         USER_AGENT,
                         null,
-                        new GeocodingRetryManager.GeocodingSuccessCallback() {
-                            @Override
-                            public void onSuccess(GeocodingResponseParser.GeocodingResult globalResult) {
+                            globalResult -> {
                                 if (!isAdded() || getActivity() == null) return;
                                 String globalCountryCode = globalResult.getCountryCode();
                                 String globalDisplayName = globalResult.getDisplayName();
@@ -999,116 +956,21 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
                                 // Show dialog with both results, but always use US result
                                 showDualLocationDialog(usDisplayName, usCountryCode, globalDisplayName, globalCountryCode);
                                 hideLoading();
-                            }
-                        },
-                        new GeocodingRetryManager.GeocodingFailureCallback() {
-                            @Override
-                            public void onFailure(String errorMessage) {
+                            },
+                            errorMessage -> {
                                 if (!isAdded() || getActivity() == null) return;
                                 hideLoading();
                                 Log.e(TAG, "Global geocoding failed after retries for country check (address: '" + address + "'): " + errorMessage);
                                 // Show dialog with only US result
                                 showDualLocationDialog(usDisplayName, usCountryCode, usDisplayName, usCountryCode);
                             }
-                        }
                     );
-                }
-            },
-            new GeocodingRetryManager.GeocodingFailureCallback() {
-                @Override
-                public void onFailure(String errorMessage) {
+                },
+                errorMessage -> {
                     if (!isAdded() || getActivity() == null) return;
                     hideLoading();
                     Log.e(TAG, "Geocoding failed after retries for country check (address: '" + address + "'): " + errorMessage);
-                    showNominatimErrorDialog("Could not verify location. Is the location in the United States? Error: " + errorMessage);
-                }
-            }
-        );
-    }
-
-    private void checkCountryWithReturn(String address) {
-        if (!isAdded() || getActivity() == null || address == null || address.trim().isEmpty()) {
-            if (address != null && !address.trim().isEmpty()) {
-                Toast.makeText(requireContext(), "Please enter a valid address", Toast.LENGTH_SHORT).show();
-            }
-            return;
-        }
-        showLoading();
-        Log.d(TAG, "Checking country for address (with retry): " + address);
-        // 1. Zip code check
-        if (address.matches("\\d{5}")) {
-            GeocodingRetryManager.geocodeWithRetry(
-                    requireContext(),
-                    address,
-                    USER_AGENT,
-                    "us",
-                    usResult -> {
-                        if (!isAdded() || getActivity() == null) return;
-                        String usCountryCode = usResult.getCountryCode();
-                        String usDisplayName = usResult.getDisplayName();
-                        Log.d(TAG, "Zipcode geocoding for current location click success. Address: '" + address + "', DisplayName: '" + usDisplayName + "', Country Code: '" + usCountryCode + "'");
-                    },
-                    errorMessage -> {
-                        if (!isAdded() || getActivity() == null) return;
-                        hideLoading();
-                        Log.e(TAG, "Zipcode geocoding failed after retries for country check (address: '" + address + "'): " + errorMessage);
-                        showNominatimErrorDialog("Could not verify zipcode location. Please try again. Error: " + errorMessage);
-                    }
-            );
-            return;
-        }
-        // 2. Geocode with countrycodes=us
-        GeocodingRetryManager.geocodeWithRetry(
-                requireContext(),
-                address,
-                USER_AGENT,
-                "us",
-                new GeocodingRetryManager.GeocodingSuccessCallback() {
-                    @Override
-                    public void onSuccess(GeocodingResponseParser.GeocodingResult usResult) {
-                        if (!isAdded() || getActivity() == null) return;
-                        String usCountryCode = usResult.getCountryCode();
-                        String usDisplayName = usResult.getDisplayName();
-                        Log.d(TAG, "Geocoding (countrycodes=us) success. Address: '" + address + "', DisplayName: '" + usDisplayName + "', Country Code: '" + usCountryCode + "'");
-                        // Now run second geocode without countrycodes for comparison only
-                        GeocodingRetryManager.geocodeWithRetry(
-                                requireContext(),
-                                address,
-                                USER_AGENT,
-                                null,
-                                new GeocodingRetryManager.GeocodingSuccessCallback() {
-                                    @Override
-                                    public void onSuccess(GeocodingResponseParser.GeocodingResult globalResult) {
-                                        if (!isAdded() || getActivity() == null) return;
-                                        String globalCountryCode = globalResult.getCountryCode();
-                                        String globalDisplayName = globalResult.getDisplayName();
-                                        Log.d(TAG, "Geocoding (no countrycodes) success. Address: '" + address + "', DisplayName: '" + globalDisplayName + "', Country Code: '" + globalCountryCode + "'");
-                                        // Show dialog with both results, but always use US result
-                                        showDualLocationDialog(usDisplayName, usCountryCode, globalDisplayName, globalCountryCode);
-                                        hideLoading();
-                                    }
-                                },
-                                new GeocodingRetryManager.GeocodingFailureCallback() {
-                                    @Override
-                                    public void onFailure(String errorMessage) {
-                                        if (!isAdded() || getActivity() == null) return;
-                                        hideLoading();
-                                        Log.e(TAG, "Global geocoding failed after retries for country check (address: '" + address + "'): " + errorMessage);
-                                        // Show dialog with only US result
-                                        showDualLocationDialog(usDisplayName, usCountryCode, usDisplayName, usCountryCode);
-                                    }
-                                }
-                        );
-                    }
-                },
-                new GeocodingRetryManager.GeocodingFailureCallback() {
-                    @Override
-                    public void onFailure(String errorMessage) {
-                        if (!isAdded() || getActivity() == null) return;
-                        hideLoading();
-                        Log.e(TAG, "Geocoding failed after retries for country check (address: '" + address + "'): " + errorMessage);
-                        showNominatimErrorDialog("Could not verify location. Is the location in the United States? Error: " + errorMessage);
-                    }
+                    showNominatimErrorDialog("Location may not be in the United States. Error: " + errorMessage);
                 }
         );
     }

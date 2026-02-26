@@ -126,12 +126,13 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:gravity="center_vertical">
+                android:gravity="center_vertical"
+                android:id="@+id/idkjustforconstrain">
                 <TextView
                     android:id="@+id/dayThree"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android.text="Day after tomorrow: "
+                    android:text="Day after tomorrow: "
                     android:textColor="@color/white"
                     android:textSize="16dp"/>
                 <TextView
@@ -142,6 +143,14 @@
                     android:textColor="@color/white"
                     android:textSize="24dp"/>
             </LinearLayout>
+            <com.github.mikephil.charting.charts.BarChart
+                android:id="@+id/snowday_bar_chart"
+                android:layout_width="fill_parent"
+                android:layout_height="160dp"
+                android:layout_marginTop="12dp"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/idkjustforconstrain" />
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
