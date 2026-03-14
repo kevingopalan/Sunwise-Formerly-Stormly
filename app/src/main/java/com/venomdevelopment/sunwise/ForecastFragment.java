@@ -118,11 +118,6 @@ public class ForecastFragment extends Fragment {
     private FloatingActionButton reloadFab;
     private BarChart hourlyBarChart;
     private BarChart dailyBarChart;
-    private BarChart snowdayBarChart;
-    // Snow day widget
-    private View snowDayWidgetContainer;
-    private TextView snowDayWidgetPrediction;
-    private TextView snowDayWidgetTitle;
 
     public String getPreferenceValue() {
         return sunwisePrefs.getString("address", "");
@@ -279,8 +274,6 @@ public class ForecastFragment extends Fragment {
         });
 
     // Setup charts with proper styling and fonts
-    // Setup snow day widget
-    setupSnowDayWidget(view);
 
         // Get location from arguments or preferences
         Bundle args = getArguments();
@@ -299,160 +292,6 @@ public class ForecastFragment extends Fragment {
         return view;
     }
 
-    private void setupSnowDayWidget(View root) {
-        try {
-            // Bind views from included layout
-            snowDayWidgetContainer = root.findViewById(R.id.snow_day_widget);
-            snowDayWidgetPrediction = root.findViewById(R.id.snow_day_widget_prediction);
-            snowDayWidgetTitle = root.findViewById(R.id.snow_day_widget_title);
-            if (snowDayWidgetContainer == null || snowDayWidgetPrediction == null) return;
-            // Inline inputs (snowdays + school type) and bar chart
-            EditText snowdaysInput = root.findViewById(R.id.snowdays_input);
-            Spinner schoolTypeSpinner = root.findViewById(R.id.snowday_schooltype);
-            Button calculateBtn = root.findViewById(R.id.snowday_calculate_button);
-            snowdayBarChart = root.findViewById(R.id.snowday_bar_chart);
-
-            // Setup spinner options
-            try {
-                ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(requireContext(), R.array.school_types, android.R.layout.simple_spinner_item);
-                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-                schoolTypeSpinner.setAdapter(adapter);
-            } catch (Exception ignored) {}
-
-            calculateBtn.setOnClickListener(v -> {
-                String zipcode = getCurrentZipcode();
-                if (zipcode == null || zipcode.isEmpty()) {
-                    Toast.makeText(getContext(), "Couldn't get zipcode", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                int days = 0;
-                try { days = Integer.parseInt(snowdaysInput.getText().toString().trim()); } catch (Exception ignored) {}
-                com.venomdevelopment.sunwise.SnowDayCalculator.SchoolType schoolType = com.venomdevelopment.sunwise.SnowDayCalculator.SchoolType.values()[schoolTypeSpinner.getSelectedItemPosition()];
-                new SnowDayAsyncTask(zipcode, days, schoolType).execute();
-            });
-
-            // Do not auto-run at startup using potentially stale stored zipcode.
-            // Instead, when the app receives a geocoded location we will save the zipcode
-            // and trigger the snow-day calculation from updateLocationDisplay(...).
-        } catch (Exception e) {
-            Log.e(TAG, "Error setting up snow day widget", e);
-        }
-    }
-
-    private class SnowDayAsyncTask extends android.os.AsyncTask<Void, Void, java.util.Map<String, Long>> {
-        private final String zipcode;
-        private final int snowdays;
-        private final com.venomdevelopment.sunwise.SnowDayCalculator.SchoolType schoolType;
-        private Exception error;
-
-        SnowDayAsyncTask(String zipcode, int snowdays, com.venomdevelopment.sunwise.SnowDayCalculator.SchoolType schoolType) {
-            this.zipcode = zipcode;
-            this.snowdays = snowdays;
-            this.schoolType = schoolType;
-        }
-
-        @Override
-        protected void onPreExecute() {
-            super.onPreExecute();
-            if (snowDayWidgetPrediction != null) snowDayWidgetPrediction.setText("Loading...");
-            showLoading();
-        }
-
-        @Override
-        protected java.util.Map<String, Long> doInBackground(Void... voids) {
-            try {
-                // Call Kotlin class directly
-                com.venomdevelopment.sunwise.SnowDayCalculator calc = new com.venomdevelopment.sunwise.SnowDayCalculator(zipcode, snowdays, schoolType);
-                return calc.getPredictions();
-            } catch (Exception e) {
-                Log.e(TAG, "SnowDay calculation failed", e);
-                this.error = e;
-                return new java.util.HashMap<>();
-            }
-        }
-
-        @Override
-        protected void onPostExecute(java.util.Map<String, Long> result) {
-            hideLoading();
-            if (!isAdded()) return;
-            try {
-                java.text.SimpleDateFormat dateFormat = new java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.getDefault());
-                java.util.Calendar cal = java.util.Calendar.getInstance();
-                String today = dateFormat.format(cal.getTime());
-                Long pToday = result.get(today);
-                cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
-                String tomorrow = dateFormat.format(cal.getTime());
-                Long pTomorrow = result.get(tomorrow);
-                cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
-                String twoDays = dateFormat.format(cal.getTime());
-                Long pTwo = result.get(twoDays);
-                // Update textual summary
-                String display = "Today: " + (pToday != null ? (pToday < 0 ? "Limited" : pToday + "%") : "N/A")
-                    + "\nTomorrow: " + (pTomorrow != null ? (pTomorrow < 0 ? "Limited" : pTomorrow + "%") : "N/A")
-                    + "\nDay After: " + (pTwo != null ? (pTwo < 0 ? "Limited" : pTwo + "%") : "N/A");
-                if (snowDayWidgetPrediction != null) snowDayWidgetPrediction.setText(display);
-
-                // Build bar chart entries (use 0 for N/A or Limited values)
-                if (snowdayBarChart != null) {
-                    java.util.ArrayList<BarEntry> entries = new java.util.ArrayList<>();
-                    float todayVal = (pToday != null && pToday >= 0) ? pToday.floatValue() : 0f;
-                    float tomorrowVal = (pTomorrow != null && pTomorrow >= 0) ? pTomorrow.floatValue() : 0f;
-                    float twoVal = (pTwo != null && pTwo >= 0) ? pTwo.floatValue() : 0f;
-                    entries.add(new BarEntry(0f, todayVal));
-                    entries.add(new BarEntry(1f, tomorrowVal));
-                    entries.add(new BarEntry(2f, twoVal));
-
-                    BarDataSet set = new BarDataSet(entries, "Snow Day Chance");
-                    int barColor = ContextCompat.getColor(requireContext(), R.color.df_low);
-                    set.setColor(barColor);
-                    set.setDrawValues(true);
-                    set.setValueTextSize(12f);
-                    set.setValueTextColor(ContextCompat.getColor(requireContext(), android.R.color.white));
-                    android.graphics.Typeface montsemibold = ResourcesCompat.getFont(getContext(), R.font.montsemibold);
-                    set.setValueTypeface(montsemibold);
-
-                    BarData data = new BarData(set);
-                    data.setBarWidth(0.6f);
-                    snowdayBarChart.setData(data);
-
-                    java.util.ArrayList<String> labels = new java.util.ArrayList<>();
-                    labels.add("Today"); labels.add("Tomorrow"); labels.add("Day After");
-
-                    XAxis x = snowdayBarChart.getXAxis();
-                    x.setGranularity(1f);
-                    x.setPosition(XAxis.XAxisPosition.BOTTOM);
-                    x.setDrawGridLines(false);
-                    x.setValueFormatter(new IndexAxisValueFormatter(labels));
-                    x.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.white));
-                    x.setTextSize(12f);
-
-                    YAxis y = snowdayBarChart.getAxisLeft();
-                    y.setDrawGridLines(false);
-                    y.setAxisMinimum(0f);
-                    y.setAxisMaximum(100f);
-                    y.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.white));
-                    y.setTextSize(12f);
-                    y.setValueFormatter(new ValueFormatter() {
-                        @Override
-                        public String getFormattedValue(float value) {
-                            return Math.round(Double.parseDouble(super.getFormattedValue(value))) + "%";
-                        }
-                    });
-                    setTypefaceIfAvailable(x, R.font.montsemibold);
-                    setTypefaceIfAvailable(y, R.font.montsemibold);
-                    snowdayBarChart.setRenderer(new RoundedBarChartRenderer(snowdayBarChart, snowdayBarChart.getAnimator(), snowdayBarChart.getViewPortHandler(), Utils.convertDpToPixel(8f)));
-                    snowdayBarChart.getAxisRight().setEnabled(false);
-                    snowdayBarChart.getLegend().setEnabled(false);
-                    snowdayBarChart.getDescription().setEnabled(false);
-                    snowdayBarChart.setFitBars(true);
-                    snowdayBarChart.invalidate();
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Error updating snow day UI", e);
-                if (snowDayWidgetPrediction != null) snowDayWidgetPrediction.setText("Error");
-            }
-        }
-    }
 
     private void fetchGeocodingData(String address) {
         if (processedGeocodeAddresses.contains(address)) return;
@@ -1597,13 +1436,6 @@ public class ForecastFragment extends Fragment {
                             editor.putString("zipcode", zip);
                             editor.apply();
                         }
-                    }
-                    // If the snow-day widget has been set up, auto-run the calculation
-                    // using the freshly obtained zipcode (use PUBLIC school type and 1 day by default).
-                    if (isAdded() && snowDayWidgetPrediction != null) {
-                        try {
-                            new SnowDayAsyncTask(zip, 1, com.venomdevelopment.sunwise.SnowDayCalculator.SchoolType.PUBLIC).execute();
-                        } catch (Exception ignored) {}
                     }
                 }
             }
