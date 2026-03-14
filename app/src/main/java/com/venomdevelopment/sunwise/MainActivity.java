@@ -358,7 +358,7 @@ public class MainActivity extends AppCompatActivity
     private void showTesterDialog() {
         new AlertDialog.Builder(MainActivity.this)
                 .setTitle("Hey there!")
-                .setMessage("Thank you for signing up for our closed test! You are one of the first people to use this software, and any feedback you submit is highly appreciated. \n \n" +
+                .setMessage("Thank you for signing up for our test! You are some of the first people to use this software, and any feedback you submit is highly appreciated. \n \n" +
                         "Here are some things you may want to know: \n \n" +
                         "- This app is going to be targeted to the US only during production/open testing. This is due to a limitation with the APIs we use, which include the National Weather Service. \n \n" +
                         "- This app will have bugs, so please leave feedback, it helps improve Sunwise and brings this app one step closer to production. \n \n" +

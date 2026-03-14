@@ -101,7 +101,6 @@ public class ForecastFragment extends Fragment {
     private RecyclerView horizontalHourlyRecyclerView;
     private HorizontalHourlyForecastAdapter horizontalHourlyAdapter;
     private WeatherViewModel weatherViewModel;
-    // GraphView removed; MPAndroidChart BarCharts are used instead
 
     public static final String myPref = "addressPref";
 
@@ -149,7 +148,6 @@ public class ForecastFragment extends Fragment {
         Button saveLocationButton = view.findViewById(R.id.saveLocationButton);
         dailyRecyclerView = view.findViewById(R.id.dailyRecyclerView);
         horizontalHourlyRecyclerView = view.findViewById(R.id.hourlyRecyclerView);
-    // GraphView elements removed from layout; BarCharts are used instead
         progressBar = view.findViewById(R.id.progressBar);
         forecastAdView = view.findViewById(R.id.forecast_ad);
         reloadFab = view.findViewById(R.id.reloadFab);
@@ -281,8 +279,6 @@ public class ForecastFragment extends Fragment {
         });
 
     // Setup charts with proper styling and fonts
-    setupGraphs();
-
     // Setup snow day widget
     setupSnowDayWidget(view);
 
@@ -301,12 +297,6 @@ public class ForecastFragment extends Fragment {
         }
 
         return view;
-    }
-
-    private void setupGraphs() {
-        // Old GraphView removed; MPAndroidChart styling is applied where charts are configured.
-
-        // GraphView observers removed (GraphView UI replaced by MPAndroidChart BarCharts).
     }
 
     private void setupSnowDayWidget(View root) {
@@ -349,7 +339,6 @@ public class ForecastFragment extends Fragment {
         }
     }
 
-    // AsyncTask to call Kotlin SnowDayCalculator and update UI
     private class SnowDayAsyncTask extends android.os.AsyncTask<Void, Void, java.util.Map<String, Long>> {
         private final String zipcode;
         private final int snowdays;
