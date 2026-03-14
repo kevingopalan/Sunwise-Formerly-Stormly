@@ -353,7 +353,6 @@ public class GeocodingRetryManager {
     private static String getNextAvailableApiUrl(int attemptCount) {
         // Define all available API URLs
         String[] allApiUrls = {
-            "https://osm-nominatim.gs.mil/search?q=",
             "https://nominatim.openstreetmap.org/search?q=",
             "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address="
         };

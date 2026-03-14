@@ -392,12 +392,10 @@
         android:background="?android:colorBackground"
         android:gravity="center"
         android:orientation="vertical">
-
-        <ProgressBar
-            style="?android:attr/progressBarStyleLarge"
+        <com.google.android.material.loadingindicator.LoadingIndicator
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:indeterminateTint="?attr/colorOnSurface" />
+            app:indicatorSize="64dp"/>
 
     </LinearLayout>
 

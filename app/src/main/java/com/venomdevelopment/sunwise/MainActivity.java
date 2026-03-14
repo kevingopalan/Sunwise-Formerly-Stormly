@@ -112,9 +112,6 @@ public class MainActivity extends AppCompatActivity
                         case "settings":
                             navigationView.setCheckedItem(R.id.nav_settings);
                             break;
-                        case "snow_day":
-                            navigationView.setCheckedItem(R.id.nav_snow_day);
-                            break;
                         default:
                             navigationView.setCheckedItem(R.id.nav_home);
                             break;
@@ -288,9 +285,6 @@ public class MainActivity extends AppCompatActivity
         } else if (id == R.id.nav_settings) {
             fragment = new SettingsFragment();
             tag = "settings";
-        } else if (id == R.id.nav_snow_day) {
-//            fragment = new SnowDayFragment();
-//            tag = "snow_day";
         }
 
         if (fragment != null) {
