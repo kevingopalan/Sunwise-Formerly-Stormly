@@ -1,5 +1,5 @@
 [versions]
-agp = "8.12.3"
+agp = "9.1.0"
 junit = "4.13.2"
 junitVersion = "1.2.1"
 espressoCore = "3.6.1"
@@ -14,7 +14,7 @@ playServicesAds = "24.4.0"
 preference = "1.2.1"
 legacySupportV4 = "1.0.0"
 recyclerview = "1.4.0"
-kotlin = "2.1.0"
+kotlin = "2.2.10"
 coreKtx = "1.16.0"
 reviewKtx = "2.0.2"
 

@@ -253,10 +253,6 @@ public class MainActivity extends AppCompatActivity
                     fragment = new SettingsFragment();
                     navItemId = R.id.nav_settings;
                     break;
-//                case "snow_day":
-//                    fragment = new SnowDayFragment();
-//                    navItemId = R.id.nav_snow_day;
-//                    break;
             }
 
             if (fragment != null) {
