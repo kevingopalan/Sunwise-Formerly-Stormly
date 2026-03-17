@@ -14,7 +14,7 @@ public class NominatimHostManager {
     
     // Nominatim hosts (same API format)
     private static final String[] NOMINATIM_HOSTS = {
-        "https://osm-nominatim.gs.mil",
+        "https://nominatim.openstreetmap.org",
         "https://nominatim.openstreetmap.org"
     };
     

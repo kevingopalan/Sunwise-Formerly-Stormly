@@ -4,13 +4,10 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModel;
 
-// GraphView types removed (no longer used)
 import android.content.Context;
 import android.util.Log;
-import android.widget.Toast;
+
 import com.android.volley.Request;
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonArrayRequest;
 import com.android.volley.toolbox.JsonObjectRequest;
 import org.json.JSONArray;
@@ -334,11 +331,6 @@ public class WeatherViewModel extends ViewModel {
         } catch (Exception ignored) {}
         requestQueue.getCache().clear();
         requestQueue.add(jsonObjectRequest);
-    }
-
-    // Overload for backward compatibility (no callback)
-    private void fetchWeatherData(com.android.volley.RequestQueue requestQueue, String USER_AGENT, String pointsUrl, String originalAddress) {
-        fetchWeatherData(requestQueue, USER_AGENT, pointsUrl, originalAddress, null);
     }
 
     // Update fetchCurrentWeatherData to accept onComplete
