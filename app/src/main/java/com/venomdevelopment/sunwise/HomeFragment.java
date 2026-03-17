@@ -5,6 +5,9 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -16,6 +19,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -34,10 +38,6 @@ import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.JsonArrayRequest;
 import com.android.volley.toolbox.JsonObjectRequest;
-import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.location.Priority;
-import com.google.android.gms.tasks.CancellationTokenSource;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -67,8 +67,7 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
     private SavedLocationAdapter savedLocationAdapter;
     private final List<String> savedLocationsList = new ArrayList<>();
     private final List<String> originalSavedLocationsList = new ArrayList<>();
-    private FusedLocationProviderClient fusedLocationClient;
-    private CancellationTokenSource cancellationTokenSource;
+    private LocationManager locationManager;
     private RequestQueue requestQueue;
     private LinearLayout progressBar;
     private boolean autoLocationEnabled = true;
@@ -78,13 +77,15 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
     private WeatherViewModel weatherViewModel;
     private final Handler reloadHandler = new Handler(Looper.getMainLooper());
     private int weatherReloadAttempts = 0;
-    private static final int MAX_WEATHER_RELOADS = 10;
+    private static final int MAX_WEATHER_RELOADS = 12;
     private static final int RELOAD_DELAY_MS = 2000;
 
-    private static final int LOCATION_TIMEOUT_MS = 10000;
+    private static final int LOCATION_TIMEOUT_MS = 15000; // Slightly longer for framework location
     private boolean isLocationDetectionInProgress = false;
+    private boolean isSavedLocationsLoading = false;
     private long locationDetectionStartTime = 0;
     private boolean hasLocationTimeoutOccurred = false;
+    private FrameLayout locationNeeded;
 
     private final Runnable fetchWeatherRunnable = this::attemptWeatherDataFetch;
 
@@ -115,13 +116,14 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
                              @Nullable Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_home, container, false);
         
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext());
+        locationManager = (LocationManager) requireContext().getSystemService(Context.LOCATION_SERVICE);
 
         if (!checkLocationPermission()) {
             requestLocationPermission();
         }
         
         search = v.findViewById(R.id.text_search);
+        locationNeeded = v.findViewById(R.id.locationNeeded);
         suggestionsRecyclerView = v.findViewById(R.id.suggestionsRecyclerView);
         suggestionsRecyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
         suggestionAdapter = new LocationSuggestionAdapter(suggestionList, suggestion -> {
@@ -176,7 +178,24 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
         detectedLocationRecyclerView.setAdapter(detectedLocationAdapter);
 
         weatherViewModel = new ViewModelProvider(requireActivity()).get(WeatherViewModel.class);
+        
+        search.setText(getPreferenceValue(), TextView.BufferType.EDITABLE);
+
+        sunwisePrefs = requireContext().getSharedPreferences("SunwiseSettings", Context.MODE_PRIVATE);
+        autoLocationEnabled = sunwisePrefs.getBoolean("auto_location_enabled", true);
+        locationButton.setVisibility(autoLocationEnabled ? View.GONE : View.VISIBLE);
+
+        weatherViewModel.getLocationWeatherMap().observe(getViewLifecycleOwner(), locationWeatherMap -> {
+            updateAdaptersWithWeatherData();
+        });
+
+        // Start loading sequence
+        showLoading();
         loadSavedLocations();
+
+        if (autoLocationEnabled && checkLocationPermission()) {
+            getCurrentLocation();
+        }
 
         savedLocationsSearch.addTextChangedListener(new TextWatcher() {
             @Override
@@ -220,22 +239,6 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
             }
         });
 
-        search.setText(getPreferenceValue(), TextView.BufferType.EDITABLE);
-
-        sunwisePrefs = requireContext().getSharedPreferences("SunwiseSettings", Context.MODE_PRIVATE);
-        autoLocationEnabled = sunwisePrefs.getBoolean("auto_location_enabled", true);
-        locationButton.setVisibility(autoLocationEnabled ? View.GONE : View.VISIBLE);
-
-        if (autoLocationEnabled && checkLocationPermission()) {
-            getCurrentLocation();
-        }
-
-        weatherViewModel.getLocationWeatherMap().observe(getViewLifecycleOwner(), locationWeatherMap -> {
-            updateAdaptersWithWeatherData();
-        });
-
-        showLoading();
-
         return v;
     }
 
@@ -260,11 +263,13 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
             savedLocationsList.clear();
             synchronized(usSavedLocationsList) { usSavedLocationsList.clear(); }
             savedLocationAdapter.notifyDataSetChanged();
+            isSavedLocationsLoading = false;
             startWeatherDataRetry();
             return;
         }
 
         if (!originalSavedLocationsList.equals(savedList) || usSavedLocationsList.isEmpty()) {
+            isSavedLocationsLoading = true;
             originalSavedLocationsList.clear();
             originalSavedLocationsList.addAll(savedList);
             
@@ -280,18 +285,21 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
                         }
                         completed[0]++;
                         if (completed[0] == savedSet.size()) {
+                            isSavedLocationsLoading = false;
                             finalizeSavedLocationsLoading();
                         }
                     },
                     errorMessage -> {
                         completed[0]++;
                         if (completed[0] == savedSet.size()) {
+                            isSavedLocationsLoading = false;
                             finalizeSavedLocationsLoading();
                         }
                     }
                 );
             }
         } else {
+            isSavedLocationsLoading = false;
             startWeatherDataRetry();
         }
     }
@@ -377,64 +385,96 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
                 getCurrentLocation();
             } else {
                 Toast.makeText(requireContext(), "Location permission denied.", Toast.LENGTH_SHORT).show();
+                locationNeeded.setVisibility(View.VISIBLE);
             }
         }
     }
 
-    @SuppressLint("MissingPermission")
     private void getCurrentLocation() {
-        if (fusedLocationClient == null) return;
+        if (locationManager == null) return;
 
         showLoading();
         
-        if (cancellationTokenSource != null) {
-            cancellationTokenSource.cancel();
-        }
-        cancellationTokenSource = new CancellationTokenSource();
-
         isLocationDetectionInProgress = true;
         locationDetectionStartTime = System.currentTimeMillis();
         hasLocationTimeoutOccurred = false;
 
-        fusedLocationClient.getLastLocation().addOnSuccessListener(location -> {
-            if (location != null && (System.currentTimeMillis() - location.getTime()) < 60000) {
-                Log.d(TAG, "Using recent last location");
-                isLocationDetectionInProgress = false;
-                reverseGeocode(location.getLatitude(), location.getLongitude());
-            } else {
-                requestFreshLocation();
-            }
-        }).addOnFailureListener(e -> requestFreshLocation());
+        // Try to get a recent location from either GPS or Network provider
+        if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            locationNeeded.setVisibility(View.VISIBLE);
+            return;
+        }
+        Location lastKnownGps = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+        Location lastKnownNetwork = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+        
+        Location bestLocation = null;
+        if (lastKnownGps != null && lastKnownNetwork != null) {
+            bestLocation = (lastKnownGps.getTime() > lastKnownNetwork.getTime()) ? lastKnownGps : lastKnownNetwork;
+        } else {
+            bestLocation = (lastKnownGps != null) ? lastKnownGps : lastKnownNetwork;
+        }
+
+        if (bestLocation != null && (System.currentTimeMillis() - bestLocation.getTime()) < 60000) {
+            Log.d(TAG, "Using recent last location from " + bestLocation.getProvider());
+            isLocationDetectionInProgress = false;
+            reverseGeocode(bestLocation.getLatitude(), bestLocation.getLongitude());
+            return;
+        }
+
+        requestFreshLocation();
     }
 
     @SuppressLint("MissingPermission")
     private void requestFreshLocation() {
+        if (locationManager == null) return;
+
         reloadHandler.postDelayed(() -> {
             if (isLocationDetectionInProgress && !hasLocationTimeoutOccurred) {
-                Log.d(TAG, "Location detection UI timeout, hiding spinner");
+                Log.d(TAG, "Location detection UI timeout, stopping updates");
                 hasLocationTimeoutOccurred = true;
-                hideLoading();
+                isLocationDetectionInProgress = false;
+                locationManager.removeUpdates(locationListener);
+                startWeatherDataRetry();
             }
         }, LOCATION_TIMEOUT_MS);
 
-        fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cancellationTokenSource.getToken())
-            .addOnSuccessListener(location -> {
-                isLocationDetectionInProgress = false;
-                if (location != null) {
-                    Log.d(TAG, "Location detected after " + (System.currentTimeMillis() - locationDetectionStartTime) + "ms");
-                    reverseGeocode(location.getLatitude(), location.getLongitude());
-                } else {
-                    Log.e(TAG, "Location is null even after success");
-                    hideLoading();
-                    Toast.makeText(requireContext(), "Could not detect location.", Toast.LENGTH_SHORT).show();
-                }
-            })
-            .addOnFailureListener(e -> {
-                isLocationDetectionInProgress = false;
-                hideLoading();
-                Log.e(TAG, "Location detection failed: " + e.getMessage());
-            });
+        // Request updates from both providers for better reliability
+        if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
+        }
+        if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
+        }
+        
+        if (!locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER) && 
+            !locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+            Log.e(TAG, "No location providers enabled");
+            isLocationDetectionInProgress = false;
+            startWeatherDataRetry();
+            Toast.makeText(requireContext(), "Please enable location services.", Toast.LENGTH_SHORT).show();
+        }
     }
+
+    private final LocationListener locationListener = new LocationListener() {
+        @Override
+        public void onLocationChanged(@NonNull Location location) {
+            if (isLocationDetectionInProgress) {
+                Log.d(TAG, "Location detected via " + location.getProvider() + " after " + (System.currentTimeMillis() - locationDetectionStartTime) + "ms");
+                isLocationDetectionInProgress = false;
+                locationManager.removeUpdates(this);
+                reverseGeocode(location.getLatitude(), location.getLongitude());
+            }
+        }
+
+        @Override
+        public void onProviderDisabled(@NonNull String provider) {}
+
+        @Override
+        public void onProviderEnabled(@NonNull String provider) {}
+
+        @Override
+        public void onStatusChanged(String provider, int status, Bundle extras) {}
+    };
 
     private void reverseGeocode(double latitude, double longitude) {
         if (!isAdded() || getActivity() == null) return;
@@ -457,6 +497,7 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
                     } catch (JSONException e) {
                         Log.e(TAG, "Error parsing reverse geocoding response: " + e.getMessage());
                         showNominatimErrorDialog("Error parsing location data.");
+                        startWeatherDataRetry();
                     }
                 }, error -> {
             Log.e(TAG, "Reverse geocoding error, trying fallback");
@@ -493,10 +534,12 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
                     } catch (JSONException e) {
                         Log.e(TAG, "Error parsing reverse geocoding response from fallback: " + e.getMessage());
                         showNominatimErrorDialog("Error parsing location data.");
+                        startWeatherDataRetry();
                     }
                 }, error -> {
-            hideLoading();
+            Log.e(TAG, "All reverse geocoding failed");
             showNominatimErrorDialog("Could not connect to location service from any available host.");
+            startWeatherDataRetry();
         }) {
             @Override
             public Map<String, String> getHeaders() {
@@ -592,7 +635,8 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
     }
 
     private void showLoading() {
-        if (progressBar != null && progressBar.getVisibility() != View.VISIBLE) {
+        if (progressBar != null) {
+            progressBar.animate().cancel();
             progressBar.setAlpha(1f);
             progressBar.setVisibility(View.VISIBLE);
         }
@@ -603,7 +647,10 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
             progressBar.animate()
                 .alpha(0f)
                 .setDuration(200)
-                .withEndAction(() -> progressBar.setVisibility(View.GONE))
+                .withEndAction(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    progressBar.setAlpha(1f); // Reset for next use
+                })
                 .start();
         }
     }
@@ -622,7 +669,7 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
         synchronized(usDetectedLocationList) { allLocations.addAll(usDetectedLocationList); }
 
         if (allLocations.isEmpty()) {
-            if (!isLocationDetectionInProgress) {
+            if (!isLocationDetectionInProgress && !isSavedLocationsLoading) {
                 hideLoading();
             } else {
                 weatherReloadAttempts++;
@@ -693,8 +740,8 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
     public void onDestroyView() {
         super.onDestroyView();
         cancelWeatherFetching();
-        if (cancellationTokenSource != null) {
-            cancellationTokenSource.cancel();
+        if (locationManager != null) {
+            locationManager.removeUpdates(locationListener);
         }
     }
 
@@ -702,6 +749,7 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
         reloadHandler.removeCallbacksAndMessages(null);
         weatherReloadAttempts = MAX_WEATHER_RELOADS;
         isLocationDetectionInProgress = false;
+        isSavedLocationsLoading = false;
         hasLocationTimeoutOccurred = false;
         if (requestQueue != null) requestQueue.cancelAll(TAG);
     }

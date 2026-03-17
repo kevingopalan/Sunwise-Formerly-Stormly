@@ -67,6 +67,18 @@
                 android:textStyle="bold"
                 android:textSize="18sp"
                 android:textColor="?attr/colorOnBackground" />
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/locationNeeded"
+                android:visibility="gone">
+                <include
+                    layout="@layout/need_location_please"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    />
+            </FrameLayout>
 
             <Button
                 android:id="@+id/locationButton"

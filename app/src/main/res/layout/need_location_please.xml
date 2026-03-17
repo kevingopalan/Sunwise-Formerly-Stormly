@@ -10,20 +10,21 @@
     android:background="@drawable/main_background"
     android:layout_marginBottom="10dp">
     <TextView
-        android:id="@+id/locationNameTextView"
+        android:id="@+id/locationpermgotdenied"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:ellipsize="end"
         android:maxLines="1"
         android:textSize="16sp"
-        android:textColor="?attr/colorOnBackground"
-        tools:text="No location permission" />
+        android:textColor="?attr/colorOnSurface"
+        android:text="No location permission"
+        android:visibility="visible"/>
 
     <ImageView
         android:layout_height="32dp"
         android:layout_width="32dp"
-        android:src = "@drawable/outline_wrong_location_24"/>
+        android:src = "@drawable/outline_wrong_location_24" />
 
 
 </LinearLayout>

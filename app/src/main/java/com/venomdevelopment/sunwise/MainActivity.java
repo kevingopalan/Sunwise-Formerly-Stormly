@@ -120,7 +120,7 @@ public class MainActivity extends AppCompatActivity
             }
         }
         loadInterstitialAd();
-        showTesterDialog();
+//        showTesterDialog();
     }
 
     private void setupAdView() {
