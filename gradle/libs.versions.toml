@@ -11,6 +11,7 @@ constraintlayout = "2.1.4"
 mpandroidchart = "v3.1.0"
 navigationFragment = "2.9.0"
 playServicesAds = "24.4.0"
+playServicesLocation = "21.3.0"
 preference = "1.2.1"
 legacySupportV4 = "1.0.0"
 recyclerview = "1.4.0"
@@ -31,6 +32,7 @@ mpandroidchart = { module = "com.github.PhilJay:MPAndroidChart", version.ref = "
 navigation-fragment = { module = "androidx.navigation:navigation-fragment", version.ref = "navigationFragment" }
 navigation-ui = { module = "androidx.navigation:navigation-ui", version.ref = "navigationFragment" }
 play-services-ads = { module = "com.google.android.gms:play-services-ads", version.ref = "playServicesAds" }
+play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
 preference = { group = "androidx.preference", name = "preference", version.ref = "preference" }
 legacy-support-v4 = { group = "androidx.legacy", name = "legacy-support-v4", version.ref = "legacySupportV4" }
 recyclerview = { group = "androidx.recyclerview", name = "recyclerview", version.ref = "recyclerview" }
@@ -40,4 +42,3 @@ review-ktx = { module = "com.google.android.play:review-ktx", version.ref = "rev
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
 kotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
-
