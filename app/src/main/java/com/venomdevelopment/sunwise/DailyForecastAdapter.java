@@ -94,7 +94,7 @@ public class DailyForecastAdapter extends RecyclerView.Adapter<DailyForecastAdap
             holder.lottieAnimationView.setVisibility(View.GONE);
             return;
         }
-        
+
         try {
             holder.lottieAnimationView.setVisibility(View.VISIBLE);
             holder.lottieAnimationView.setAnimation(animationResId);
@@ -197,7 +197,7 @@ public class DailyForecastAdapter extends RecyclerView.Adapter<DailyForecastAdap
             case "day/tornado": case "night/tornado":
                 return "lightning_bolt";
         }
-        
+
         // Original mappings
         switch (iconName) {
             // Clear/Sunny conditions
@@ -211,7 +211,7 @@ public class DailyForecastAdapter extends RecyclerView.Adapter<DailyForecastAdap
                 return "cloudy";
             case "day/ovc": case "night/ovc":
                 return "overcast";
-                
+
             // Windy conditions
             case "day/wind_skc": case "night/wind_skc":
                 return "clear_day";
@@ -223,7 +223,7 @@ public class DailyForecastAdapter extends RecyclerView.Adapter<DailyForecastAdap
                 return "cloudy";
             case "day/wind_ovc": case "night/wind_ovc":
                 return "overcast";
-                
+
             // Precipitation conditions
             case "day/snow": case "night/snow":
                 return "snow";
@@ -247,7 +247,7 @@ public class DailyForecastAdapter extends RecyclerView.Adapter<DailyForecastAdap
                 return "rain";
             case "day/rain_showers_hi": case "night/rain_showers_hi":
                 return "rain";
-                
+
             // Thunderstorm conditions
             case "day/tsra": case "night/tsra":
                 return "tstorm";
@@ -255,7 +255,7 @@ public class DailyForecastAdapter extends RecyclerView.Adapter<DailyForecastAdap
                 return "tstorm";
             case "day/tsra_hi": case "night/tsra_hi":
                 return "tstorm";
-                
+
             // Severe weather
             case "day/hurricane": case "night/hurricane":
                 return "hurricane";
@@ -263,7 +263,7 @@ public class DailyForecastAdapter extends RecyclerView.Adapter<DailyForecastAdap
                 return "hurricane"; // Use hurricane animation
             case "day/blizzard": case "night/blizzard":
                 return "snow"; // Use snow animation
-                
+
             // Atmospheric conditions
             case "day/dust": case "night/dust":
                 return "dust";
@@ -273,13 +273,13 @@ public class DailyForecastAdapter extends RecyclerView.Adapter<DailyForecastAdap
                 return "haze";
             case "day/fog": case "night/fog":
                 return "fog";
-                
+
             // Temperature extremes
             case "day/hot": case "night/hot":
                 return "clear_day";
             case "day/cold": case "night/cold":
                 return "clear_day";
-                
+
             // Legacy/fallback cases
             case "day/clear": case "night/clear":
                 return "clear_day";
@@ -291,7 +291,7 @@ public class DailyForecastAdapter extends RecyclerView.Adapter<DailyForecastAdap
                 return "rain";
             case "day/wind": case "night/wind":
                 return "wind";
-                
+
             default:
                 Log.w("DailyForecastAdapter", "Unknown icon name: " + iconName + ", using clear_day as fallback");
                 return "clear_day";

@@ -27,7 +27,7 @@
         android:layout_marginEnd="8dp"
         app:lottie_autoPlay="true"
         app:lottie_loop="true"
-        app:lottie_rawRes="@raw/not_available"
+        app:lottie_rawRes="@raw/skeletonscreen"
         tools:visibility="visible" />
 
 

@@ -3,6 +3,7 @@ package com.venomdevelopment.sunwise;
 import static androidx.core.content.ContentProviderCompat.requireContext;
 
 import android.annotation.SuppressLint;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.Context;
 import android.content.res.Configuration;
@@ -57,6 +58,18 @@ public class MainActivity extends AppCompatActivity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Check if onboarding is completed
+        SharedPreferences prefs = getSharedPreferences("SunwiseSettings", MODE_PRIVATE);
+        boolean onboardingCompleted = prefs.getBoolean("onboarding_completed", false);
+
+        if (!onboardingCompleted) {
+            // Start onboarding
+            Intent onboardingIntent = new Intent(this, OnboardingActivity.class);
+            startActivity(onboardingIntent);
+            finish();
+            return;
+        }
 
         setContentView(R.layout.activity_main);
 

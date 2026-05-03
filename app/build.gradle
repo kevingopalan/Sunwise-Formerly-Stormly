@@ -26,6 +26,7 @@ android {
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
+        coreLibraryDesugaringEnabled true
     }
     buildFeatures {
         viewBinding true
@@ -35,6 +36,7 @@ android {
     }
 }
 dependencies {
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
     implementation libs.activity
     //noinspection UseTomlInstead
     implementation 'androidx.appcompat:appcompat:1.7.1'
@@ -74,4 +76,5 @@ dependencies {
     implementation libs.play.services.ads
     implementation libs.play.services.location
     implementation libs.review.ktx
+    implementation 'com.github.AppIntro:AppIntro:6.3.1'
 }

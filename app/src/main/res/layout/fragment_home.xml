@@ -3,12 +3,14 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:clipChildren="false">
 
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:fillViewport="true">
+        android:fillViewport="true"
+        android:clipChildren="false">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -23,10 +25,10 @@
                 android:orientation="horizontal"
                 android:layout_marginTop="24dp">
 
-                <EditText
+                <AutoCompleteTextView
                     android:id="@+id/text_search"
                     android:layout_width="0dp"
-                    android:layout_height="48dp"
+                    android:layout_height="56dp"
                     android:layout_weight="1"
                     android:hint="Enter location"
                     android:inputType="textPostalAddress"
@@ -35,15 +37,15 @@
                     android:paddingStart="16dp"
                     android:paddingEnd="16dp"
                     android:fontFamily="@font/montsemibold"
-                    android:textColor="?attr/colorOnBackground"
-                    android:textColorHint="?attr/colorOnSurface"
+                    android:textColor="?attr/colorOnSurface"
                     android:elevation="2dp"
-                    android:layout_marginEnd="8dp"/>
+                    android:layout_marginEnd="8dp"
+                    android:ems="10"/>
 
                 <Button
                     android:id="@+id/search"
                     android:layout_width="wrap_content"
-                    android:layout_height="48dp"
+                    android:layout_height="56dp"
                     android:text="Go"
                     android:backgroundTint="?attr/colorSurfaceContainer"
                     app:backgroundTint="?attr/colorSurfaceContainer"
@@ -63,7 +65,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:text="Current Location"
+                android:text="Your Location"
                 android:textStyle="bold"
                 android:textSize="18sp"
                 android:textColor="?attr/colorOnBackground" />
@@ -111,8 +113,11 @@
                 android:textColor="?attr/colorOnBackground" />
             <EditText
                 android:id="@+id/savedLocationsSearch"
+                android:background="@drawable/main_background"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="48dp"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
                 android:layout_marginTop="8dp"
                 android:hint="Search saved locations"
                 android:inputType="textFilter" />
@@ -123,6 +128,16 @@
                 android:layout_height="wrap_content"
                 android:overScrollMode="never"
                 android:layout_marginTop="8dp" />
+            <TextView
+                android:id="@+id/noSavedLocationsPlaceholder"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:padding="12dp"
+                android:text="No saved locations yet. Search for a location above and add it to your saved list."
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="16sp"
+                android:visibility="gone" />
 
             <com.airbnb.lottie.LottieAnimationView
                 android:id="@+id/animation_view"
@@ -137,19 +152,6 @@
         </LinearLayout>
 
     </androidx.core.widget.NestedScrollView>
-
-    <!-- Overlapping suggestions dropdown -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/suggestionsRecyclerView"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:visibility="gone"
-        android:background="@color/md_theme_surfaceContainer"
-        android:elevation="8dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
-        android:layout_marginTop="80dp"
-        android:overScrollMode="never" />
 
     <!-- Ensure progressBar overlay is last so it appears above all other views -->
     <LinearLayout

@@ -26,6 +26,7 @@ class SettingsFragment : Fragment() {
     private lateinit var timeFormatSwitch: Switch
     private lateinit var clearLocationsButton: Button
     private lateinit var feedbackButton: Button
+    private lateinit var resetOnboardingButton: Button
     private lateinit var sharedPreferences: SharedPreferences
 
     private lateinit var reviewManager: ReviewManager
@@ -46,6 +47,7 @@ class SettingsFragment : Fragment() {
         timeFormatSwitch = rootView.findViewById(R.id.timeFormatSwitch)
         clearLocationsButton = rootView.findViewById(R.id.clearLocationsButton)
         feedbackButton = rootView.findViewById(R.id.feedbackButton)
+        resetOnboardingButton = rootView.findViewById(R.id.resetOnboardingButton)
 
         // Setup unit spinner
         val adapter = ArrayAdapter.createFromResource(
@@ -134,6 +136,10 @@ class SettingsFragment : Fragment() {
         }
         feedbackButton.setOnClickListener {
             startReviewFlow()
+        }
+        resetOnboardingButton.setOnClickListener {
+            sharedPreferences.edit { putBoolean("onboarding_completed", false) }
+            Toast.makeText(requireContext(), "Tutorial will show on next app launch", Toast.LENGTH_SHORT).show()
         }
     }
 

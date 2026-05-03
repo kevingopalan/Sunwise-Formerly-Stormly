@@ -245,9 +245,24 @@
                     android:fontFamily="@font/montsemibold"
                     android:layout_marginTop="10dp" />
 
+                <Button
+                    android:id="@+id/resetOnboardingButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Restart Tutorial"
+                    android:layout_gravity="center_horizontal"
+                    android:background="@drawable/main_background"
+                    android:backgroundTint="?attr/colorSurfaceContainer"
+                    app:backgroundTint="?attr/colorSurfaceContainer"
+                    android:textAllCaps="false"
+                    android:letterSpacing="0.02"
+                    android:textColor="?attr/colorOnSurface"
+                    android:fontFamily="@font/montsemibold"
+                    android:layout_marginTop="10dp" />
+
             </LinearLayout>
 
         </LinearLayout>
 </androidx.core.widget.NestedScrollView>
 
-</FrameLayout> 
+</FrameLayout>

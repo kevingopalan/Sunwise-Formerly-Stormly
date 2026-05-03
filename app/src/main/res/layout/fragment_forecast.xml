@@ -14,7 +14,8 @@
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:clipChildren="false">
             <TextView
                 android:id="@+id/locationDisplay"
                 android:layout_width="0dp"
@@ -74,7 +75,8 @@
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/montbold"
                 android:text="--º"
-                android:textColor="#ccffffff"
+                android:textColor="?attr/colorOnSurface"
+                android:theme="@style/Theme.Material3.Dark"
                 android:textSize="72sp"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
@@ -134,131 +136,189 @@
                 android:fontFamily="@font/montsemibold"
                 android:text="---"
                 android:textAlignment="center"
-                android:textColor="#ccffffff"
+                android:textColor="?attr/colorOnSurface"
+                android:theme="@style/Theme.Material3.Dark"
                 android:textSize="20sp"
                 app:layout_constraintTop_toBottomOf="@id/hltemps"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 tools:layout_editor_absoluteY="367dp" />
-            <LinearLayout
+
+            <GridLayout
+                android:id="@+id/basicinfo"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:weightSum="1"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/text_desc"
                 android:layout_marginLeft="20dp"
                 android:layout_marginRight="20dp"
-                android:layout_marginTop="60dp"
-                android:id="@+id/basicinfo"
-                android:background="@drawable/main_background">
+                android:layout_marginTop="40dp"
+                android:background="@drawable/main_background"
+                android:columnCount="2"
+                android:rowCount="2"
+                android:padding="16dp"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/text_desc">
+
+                <!-- Humidity Section -->
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:padding="8dp">
+
+                    <com.google.android.material.progressindicator.CircularProgressIndicator
+                        android:id="@+id/humidityProgress"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:progress="0"
+                        app:indicatorSize="72dp"
+                        app:trackThickness="6dp"
+                        app:indicatorColor="?attr/colorPrimary"
+                        app:trackColor="?attr/colorSurfaceVariant"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintTop_toTopOf="parent" />
+
+                    <TextView
+                        android:id="@+id/humidity"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/montbold"
+                        android:text="--%"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="16sp"
+                        app:layout_constraintBottom_toBottomOf="@+id/humidityProgress"
+                        app:layout_constraintEnd_toEndOf="@+id/humidityProgress"
+                        app:layout_constraintStart_toStartOf="@+id/humidityProgress"
+                        app:layout_constraintTop_toTopOf="@+id/humidityProgress" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:fontFamily="@font/montsemibold"
+                        android:text="Humidity"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="12sp"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/humidityProgress" />
+                </androidx.constraintlayout.widget.ConstraintLayout>
+
+                <!-- Precipitation Section -->
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:padding="8dp">
+
+                    <com.google.android.material.progressindicator.CircularProgressIndicator
+                        android:id="@+id/precipitationProgress"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:progress="0"
+                        app:indicatorSize="72dp"
+                        app:trackThickness="6dp"
+                        app:indicatorColor="?attr/colorTertiary"
+                        app:trackColor="?attr/colorSurfaceVariant"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintTop_toTopOf="parent" />
+
+                    <TextView
+                        android:id="@+id/precipitation"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/montbold"
+                        android:text="--%"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="16sp"
+                        app:layout_constraintBottom_toBottomOf="@+id/precipitationProgress"
+                        app:layout_constraintEnd_toEndOf="@+id/precipitationProgress"
+                        app:layout_constraintStart_toStartOf="@+id/precipitationProgress"
+                        app:layout_constraintTop_toTopOf="@+id/precipitationProgress" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:fontFamily="@font/montsemibold"
+                        android:text="Precipitation"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="12sp"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/precipitationProgress" />
+                </androidx.constraintlayout.widget.ConstraintLayout>
+
+                <!-- Wind Section -->
                 <LinearLayout
                     android:layout_width="0dp"
-                    android:layout_weight=".3333333333333333333333333333333333333"
-                    android:layout_height="wrap_content">
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:layout_marginEnd="5dp"
-                        android:layout_marginTop="5dp"
-                        android:padding="10dp"
-                        android:orientation="vertical">
-                        <ImageView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:src="@drawable/humidityicon"
-                            android:layout_gravity="top"/>
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:textAlignment="center"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="10dp"
-                            android:text="Humidity"
-                            android:fontFamily = "@font/montsemibold"
-                            android:textColor="?attr/colorOnSurface"/>
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:id="@+id/humidity"
-                            android:text="--%"
-                            android:fontFamily = "@font/montbold"
-                            android:textColor="?attr/colorOnSurface"
-                            android:textAlignment="center"
-                            android:textSize="24sp"/>
-                    </LinearLayout>
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:orientation="vertical"
+                    android:padding="12dp"
+                    android:gravity="center">
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/baseline_wind_24"
+                        app:tint="?attr/colorOnSurface" />
+
+                    <TextView
+                        android:id="@+id/wind"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:fontFamily="@font/montbold"
+                        android:text="--mph"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="16sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/montsemibold"
+                        android:text="Wind"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="12sp" />
                 </LinearLayout>
+
+                <!-- Dew Point Section -->
                 <LinearLayout
                     android:layout_width="0dp"
-                    android:layout_weight=".3333333333333333333333333333333333333"
-                    android:layout_height="wrap_content">
-                    <LinearLayout
-                        android:orientation="vertical"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:layout_marginEnd="5dp"
-                        android:layout_marginTop="5dp"
-                        android:layout_marginStart="5dp"
-                        android:padding="10dp">
-                        <ImageView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:src="@drawable/rainy_24px"
-                            android:layout_gravity="top"/>
-                        <TextView
-                            android:layout_marginTop="10dp"
-                            android:layout_width="match_parent"
-                            android:textAlignment="center"
-                            android:layout_height="wrap_content"
-                            android:text="Precip."
-                            android:fontFamily = "@font/montsemibold"
-                            android:textColor="?attr/colorOnSurface"/>
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:id="@+id/precipitation"
-                            android:text="--%"
-                            android:fontFamily = "@font/montbold"
-                            android:textColor="?attr/colorOnSurface"
-                            android:textAlignment="center"
-                            android:textSize="24sp"/>
-                    </LinearLayout>
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:orientation="vertical"
+                    android:padding="12dp"
+                    android:gravity="center">
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/humidityicon"
+                        app:tint="?attr/colorOnSurface" />
+
+                    <TextView
+                        android:id="@+id/dewpoint"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:fontFamily="@font/montbold"
+                        android:text="--°"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="16sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/montsemibold"
+                        android:text="Dew Point"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="12sp" />
                 </LinearLayout>
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_weight=".3333333333333333333333333333333333333"
-                    android:layout_height="wrap_content">
-                    <LinearLayout
-                        android:orientation="vertical"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:layout_marginTop="5dp"
-                        android:layout_marginStart="5dp"
-                        android:padding="10dp">
-                        <ImageView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:src="@drawable/baseline_wind_24"
-                            android:layout_gravity="top"/>
-                        <TextView
-                            android:layout_marginTop="10dp"
-                            android:layout_width="match_parent"
-                            android:textAlignment="center"
-                            android:layout_height="wrap_content"
-                            android:text="Wind"
-                            android:fontFamily = "@font/montsemibold"
-                            android:textColor="?attr/colorOnSurface"/>
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="--mph"
-                            android:id="@+id/wind"
-                            android:layout_marginTop="2dp"
-                            android:fontFamily = "@font/montbold"
-                            android:textColor="?attr/colorOnSurface"
-                            android:textAlignment="center"
-                            android:textSize="20sp"/>
-                    </LinearLayout>
-                </LinearLayout>
-            </LinearLayout>
+
+            </GridLayout>
 
             <TextView
                 android:id="@+id/hourlyforecastlabel"
@@ -274,16 +334,14 @@
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/hourlyRecyclerView"
                 android:layout_width="match_parent"
-                android:layout_height="180dp"
+                android:layout_height="160dp"
                 android:layout_marginLeft="20dp"
                 android:layout_marginTop="10dp"
                 android:layout_marginRight="20dp"
-                android:background="@drawable/main_background"
                 android:clipToPadding="false"
+                android:clipChildren="false"
                 android:orientation="horizontal"
                 android:overScrollMode="never"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/hourlyforecastlabel"
                 tools:ignore="UnusedAttribute" />
@@ -308,7 +366,7 @@
                 android:layout_marginBottom="20dp"
                 android:layout_marginTop="10dp"
                 android:overScrollMode="never"
-                android:background="@drawable/main_background"
+                android:background="@drawable/mbclip"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/dailyforecastlabel"
                 tools:ignore="UnusedAttribute" />
@@ -371,6 +429,11 @@
                     android:layout_height="240dp"
                     android:layout_marginTop="12dp" />
             </LinearLayout>
+            
+            <View
+                app:layout_constraintTop_toBottomOf="@id/dailygraph"
+                android:layout_width="match_parent"
+                android:layout_height="20dp"/>
 
         </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.core.widget.NestedScrollView>

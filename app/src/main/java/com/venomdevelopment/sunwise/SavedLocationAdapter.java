@@ -93,7 +93,7 @@ public class SavedLocationAdapter extends RecyclerView.Adapter<SavedLocationAdap
             }
         } else {
             Log.d("SavedLocationAdapter", "No icon URL for " + location);
-            holder.locationAnimationView.setImageResource(android.R.drawable.ic_dialog_info); // Default
+            holder.locationAnimationView.setAnimation(R.raw.skeletonscreen); // Default
         }
         holder.itemView.setOnClickListener(v -> {
             listener.onLocationClick(location);
