@@ -87,6 +87,7 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
     private SharedPreferences sunwisePrefs;
     private SavedLocationAdapter detectedLocationAdapter;
     private TextView noSavedLocationsPlaceholder;
+    private TextView noDetectedLocationsPlaceholder;
     private final List<String> detectedLocationList = new ArrayList<>();
     private WeatherViewModel weatherViewModel;
     private final Handler reloadHandler = new Handler(Looper.getMainLooper());
@@ -176,6 +177,7 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
         savedRv.setAdapter(savedLocationAdapter);
 
         noSavedLocationsPlaceholder = v.findViewById(R.id.noSavedLocationsPlaceholder);
+        noDetectedLocationsPlaceholder = v.findViewById(R.id.locationfetch);
 
         RecyclerView detectedRv = v.findViewById(R.id.detectedLocationRecyclerView);
         detectedRv.setLayoutManager(new LinearLayoutManager(requireContext()));
@@ -275,6 +277,7 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
                 usDetectedLocationList.clear();
                 usDetectedLocationList.add(name);
                 isLocationDetectionInProgress = false;
+                noDetectedLocationsPlaceholder.setVisibility(View.GONE);
                 startWeatherDataRetry();
             }
         }, err -> {

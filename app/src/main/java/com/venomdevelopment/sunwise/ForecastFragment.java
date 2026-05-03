@@ -58,6 +58,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -81,6 +82,7 @@ public class ForecastFragment extends Fragment {
     private LottieAnimationView animationViewForecast;
     private RequestQueue requestQueue;
     private TextView currentTempTextForecast, highTempTextForecast, lowTempTextForecast, descTextForecast, humidityTextViewForecast, windTextViewForecast, precipitationTextViewForecast, dewpointTextViewForecast, locationDisplay;
+    private Button saveLocationButton;
     private CircularProgressIndicator humidityProgress, precipitationProgress;
     private RecyclerView dailyRecyclerView, horizontalHourlyRecyclerView;
     private WeatherViewModel weatherViewModel;
@@ -197,13 +199,51 @@ public class ForecastFragment extends Fragment {
     }
 
     private void setupSaveButton(View view) {
-        view.findViewById(R.id.saveLocationButton).setOnClickListener(v -> {
+        saveLocationButton = view.findViewById(R.id.saveLocationButton);
+        saveLocationButton.setOnClickListener(v -> {
             String loc = locationDisplay.getText().toString();
-            if (!loc.isEmpty() && !loc.equals("Location")) {
-                saveLocationToList(loc);
-                Toast.makeText(getContext(), "Location saved!", Toast.LENGTH_SHORT).show();
+            if (!loc.isEmpty() && !loc.equals("Location") && !isLocationSaved(loc)) {
+                if (saveLocationToList(loc)) {
+                    Toast.makeText(getContext(), "Location saved!", Toast.LENGTH_SHORT).show();
+                }
+                updateSaveButtonState(loc);
             }
         });
+
+        String initialLoc = (locationDisplay != null) ? locationDisplay.getText().toString() : "";
+        updateSaveButtonState(initialLoc);
+    }
+
+    private void updateSaveButtonState(String loc) {
+        if (saveLocationButton == null) return;
+        if (loc == null || loc.isEmpty() || loc.equals("Location")) {
+            saveLocationButton.setEnabled(false);
+            saveLocationButton.setText("Save");
+            saveLocationButton.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0);
+            saveLocationButton.setAlpha(0.5f);
+            return;
+        }
+
+        boolean saved = isLocationSaved(loc);
+        if (saved) {
+            saveLocationButton.setEnabled(false);
+            saveLocationButton.setText("Saved");
+            saveLocationButton.setCompoundDrawablesWithIntrinsicBounds(R.drawable.baseline_check_circle_24, 0, 0, 0);
+            saveLocationButton.setCompoundDrawablePadding(12);
+            saveLocationButton.setAlpha(0.6f);
+        } else {
+            saveLocationButton.setEnabled(true);
+            saveLocationButton.setText("Save");
+            saveLocationButton.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0);
+            saveLocationButton.setAlpha(1f);
+        }
+    }
+
+    private boolean isLocationSaved(String loc) {
+        if (loc == null || loc.isEmpty() || loc.equals("Location")) return false;
+        SharedPreferences sp = requireActivity().getSharedPreferences("addressPref", 0);
+        Set<String> set = sp.getStringSet("saved_locations", new HashSet<>());
+        return set != null && set.contains(loc);
     }
 
     private void observeViewModel() {
@@ -377,7 +417,7 @@ public class ForecastFragment extends Fragment {
             double val = p.getDouble("temperature");
             temps.add(formatTemperature(val, tempUnit));
             LocalDateTime startTime = LocalDateTime.parse(p.getString("startTime"), DateTimeFormatter.ISO_OFFSET_DATE_TIME);
-            String timeLabel = (i == 0) ? "Now" : startTime.format(outFmt);
+            String timeLabel = (i == 0) ? "Now" : startTime.format(outFmt) + (startTime.toLocalDate().equals(LocalDate.now()) ? "" : " " + startTime.format(DateTimeFormatter.ofPattern("EEE")));
             times.add(timeLabel);
             icons.add(p.getString("icon"));
             precips.add(p.getJSONObject("probabilityOfPrecipitation").optInt("value", 0) + "%");
@@ -566,15 +606,25 @@ public class ForecastFragment extends Fragment {
         return result;
     }
 
-    private void saveLocationToList(String loc) {
+    private boolean saveLocationToList(String loc) {
+        if (loc == null || loc.isEmpty() || loc.equals("Location")) {
+            return false;
+        }
         SharedPreferences sp = requireActivity().getSharedPreferences("addressPref", 0);
         Set<String> set = new HashSet<>(sp.getStringSet("saved_locations", new HashSet<>()));
+        if (set.contains(loc)) {
+            return false;
+        }
         set.add(loc);
         sp.edit().putStringSet("saved_locations", set).apply();
+        return true;
     }
 
     private void updateLocationDisplay(String loc) {
-        if (locationDisplay != null) locationDisplay.setText(loc);
+        if (locationDisplay != null) {
+            locationDisplay.setText(loc);
+        }
+        updateSaveButtonState(loc);
     }
 
     private void showLoading() { if (progressBar != null) progressBar.setVisibility(View.VISIBLE); }

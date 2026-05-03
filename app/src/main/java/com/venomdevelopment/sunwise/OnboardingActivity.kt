@@ -68,7 +68,7 @@ class OnboardingActivity : AppIntro2() {
             AppIntroFragment.createInstance(
                 "Save locations for later",
                 "Keep track of your locations by saving them, only a tap away.",
-                R.drawable.baseline_bookmark_24,
+                R.drawable.swsave,
                 0,
                 R.color.white,
                 R.color.white,
@@ -82,12 +82,13 @@ class OnboardingActivity : AppIntro2() {
             AppIntroFragment.createInstance(
                 "Get Started",
                 "You're all set! Hope you enjoy the app!",
-                R.drawable.baseline_check_circle_24,
-                R.color.onboarding_done,
+                R.drawable.swdone,
+                0,
                 R.color.white,
                 R.color.white,
                 R.font.montsemibold,
-                R.font.montsemibold
+                R.font.montsemibold,
+                R.drawable.gradient_clear_day
             )
         )
 
