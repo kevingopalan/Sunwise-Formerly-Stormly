@@ -150,10 +150,4 @@
     <color name="md_theme_surfaceContainerHigh_highContrast">#E5E8ED</color>
     <color name="md_theme_surfaceContainerHighest_highContrast">#DFE3E7</color>
     <color name="white">#FFFFFF</color>
-
-    <color name="onboarding_welcome">#1976D2</color>
-    <color name="onboarding_location">#2196F3</color>
-    <color name="onboarding_search">#03A9F4</color>
-    <color name="onboarding_saved">#00BCD4</color>
-    <color name="onboarding_done">#009688</color>
 </resources>
