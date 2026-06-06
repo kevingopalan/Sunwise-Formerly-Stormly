@@ -11,7 +11,7 @@ android {
         applicationId "com.venomdevelopment.sunwise"
         minSdk 25
         targetSdk 35
-        versionCode 17
+        versionCode 18
         versionName "1.0-release"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"

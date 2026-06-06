@@ -326,23 +326,44 @@ public class ForecastFragment extends Fragment {
     }
 
     private void updateDailyUI(JSONArray periods) throws JSONException {
-        ArrayList<Float> dayTemps = new ArrayList<>(), nightTemps = new ArrayList<>();
-        boolean isDayInitial = periods.getJSONObject(0).getBoolean("isDaytime");
-        for (int i = 0; i < 7 && i * 2 + 1 < periods.length(); i++) {
-            JSONObject d = periods.getJSONObject(isDayInitial ? i * 2 : i * 2 + 1);
-            JSONObject n = periods.getJSONObject(isDayInitial ? i * 2 + 1 : i * 2);
-            dayTemps.add((float) convertTemperatureForGraph(d.getDouble("temperature"), tempUnit));
-            nightTemps.add((float) convertTemperatureForGraph(n.getDouble("temperature"), tempUnit));
+        ArrayList<Float> dayTemps = new ArrayList<>();
+        ArrayList<Float> nightTemps = new ArrayList<>();
+
+        int i = 0;
+        while (i < periods.length()) {
+            JSONObject currentPeriod = periods.getJSONObject(i);
+            boolean isCurrentDay = currentPeriod.getBoolean("isDaytime");
+            float currentTemp = (float) convertTemperatureForGraph(currentPeriod.getDouble("temperature"), tempUnit);
+
+            if (i == 0) {
+                daytime = isCurrentDay;
+            }
+
+            if (isCurrentDay) {
+                dayTemps.add(currentTemp);
+                if (i + 1 < periods.length() && !periods.getJSONObject(i + 1).getBoolean("isDaytime")) {
+                    float nightTemp = (float) convertTemperatureForGraph(periods.getJSONObject(i + 1).getDouble("temperature"), tempUnit);
+                    nightTemps.add(nightTemp);
+                    i += 2;
+                } else {
+                    nightTemps.add(Float.NaN);
+                    i += 1;
+                }
+            } else {
+                dayTemps.add(Float.NaN);
+                nightTemps.add(currentTemp);
+                i += 1;
+            }
         }
+
         setupDailyChart(dayTemps, nightTemps);
 
         ArrayList<SpannableString> items = new ArrayList<>();
         ArrayList<String> times = new ArrayList<>(), icons = new ArrayList<>(), precips = new ArrayList<>(), hums = new ArrayList<>(), lotties = new ArrayList<>(), descs = new ArrayList<>();
 
-        for (int i = 0; i < periods.length(); i++) {
-            JSONObject p = periods.getJSONObject(i);
+        for (int j = 0; j < periods.length(); j++) {
+            JSONObject p = periods.getJSONObject(j);
             String name = p.getString("name");
-            daytime = p.getBoolean("isDaytime");
             String temp = formatTemperature(p.getDouble("temperature"), tempUnit);
             SpannableString ss = new SpannableString(temp);
             int color = ContextCompat.getColor(requireContext(), p.getBoolean("isDaytime") ? R.color.df_high : R.color.df_low);
@@ -447,46 +468,51 @@ public class ForecastFragment extends Fragment {
         ArrayList<String> labels = new ArrayList<>();
 
         for (int i = 0; i < days.size(); i++) {
+            if (i >= nights.size()) break;
 
-            int dayIndex = daytime ? i : i - 1;
+            Float dayVal = days.get(i);
+            Float nightVal = nights.get(i);
 
-            if (dayIndex < 0) {
-                continue;
+            if (dayVal.isNaN() && !nightVal.isNaN()) {
+                entries.add(new BarEntry(i, nightVal));
+            } else if (!dayVal.isNaN() && nightVal.isNaN()) {
+                entries.add(new BarEntry(i, dayVal));
             } else {
-                days.size();
+                float low = Math.min(dayVal, nightVal);
+                float high = Math.max(dayVal, nightVal);
+                entries.add(new BarEntry(i, new float[]{low, high - low}));
             }
 
-            float day = days.get(dayIndex);
-            float night = nights.get(i);
-
-            float low = Math.min(day, night);
-            float high = Math.max(day, night);
-
-            entries.add(new BarEntry(i, new float[]{low, high - low}));
-
-            labels.add(
-                    LocalDate.now()
-                            .plusDays(i)
-                            .format(DateTimeFormatter.ofPattern("EEE"))
-            );
+            labels.add(LocalDate.now().plusDays(i).format(DateTimeFormatter.ofPattern("EEE")));
         }
+
         BarDataSet ds = new BarDataSet(entries, "Daily");
-        ds.setColors(new int[]{ContextCompat.getColor(requireContext(), R.color.chart_low), ContextCompat.getColor(requireContext(), R.color.chart_high)});
-        
+        ds.setColors(new int[]{
+                ContextCompat.getColor(requireContext(), R.color.chart_low),
+                ContextCompat.getColor(requireContext(), R.color.chart_high)
+        });
+
         ds.setDrawValues(true);
         ds.setValueTextColor(colorOnSurface);
         ds.setValueTypeface(tf);
         ds.setValueTextSize(14f);
+
         ds.setValueFormatter(new ValueFormatter() {
+            @Override
+            public String getBarLabel(BarEntry entry) {
+                return Math.round(entry.getY()) + "°";
+            }
+
             @Override
             public String getBarStackedLabel(float value, BarEntry entry) {
                 float[] vals = entry.getYVals();
                 if (vals == null) return "";
+
                 if (value == vals[0]) {
-                    return Math.round(vals[0]) + "°"; // Low
+                    return Math.round(vals[0]) + "°";
                 }
                 if (value == vals[vals.length - 1]) {
-                    return Math.round(entry.getY()) + "°"; // High
+                    return Math.round(entry.getY()) + "°";
                 }
                 return "";
             }
@@ -497,7 +523,7 @@ public class ForecastFragment extends Fragment {
         data.setBarWidth(0.8f);
         dailyBarChart.setData(data);
         dailyBarChart.setExtraBottomOffset(15f);
-        
+
         XAxis x = dailyBarChart.getXAxis();
         x.setValueFormatter(new IndexAxisValueFormatter(labels));
         x.setPosition(XAxis.XAxisPosition.BOTTOM);
