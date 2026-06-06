@@ -397,8 +397,7 @@
                     android:text="Hourly Forecast graph"
                     android:textSize="16dp"
                     android:textColor="?attr/colorOnSurface" />
-                <!-- GraphView removed: using MPAndroidChart BarChart below -->
-                <com.github.mikephil.charting.charts.BarChart
+                <com.github.mikephil.charting.charts.LineChart
                     android:id="@+id/hourlyBarGraph"
                     android:layout_width="match_parent"
                     android:layout_height="240dp" />

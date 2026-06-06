@@ -35,6 +35,7 @@ public class FragmentAlerts extends Fragment {
     private static final String TAG = "FragmentAlerts";
     private RecyclerView recyclerView;
     private TextView noDataTextView;
+    private TextView locationTextView;
     private AlertsRecyclerViewAdapter adapter;
     private LinearLayout progressBar;
 
@@ -61,6 +62,7 @@ public class FragmentAlerts extends Fragment {
 
         progressBar = view.findViewById(R.id.progressBar);
         noDataTextView = view.findViewById(R.id.noData);
+        locationTextView = view.findViewById(R.id.alertsLocation);
 
         String address = getPreferenceValue();
         if (address.isEmpty()) {
@@ -68,7 +70,7 @@ public class FragmentAlerts extends Fragment {
         } else {
             fetchAlerts(address);
         }
-
+        locationTextView.setText(address);
         return view;
     }
 

@@ -18,9 +18,10 @@
         android:orientation="vertical">
 
         <TextView
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:drawableStart="@drawable/baseline_warning_24"
+            android:drawableEnd="@drawable/baseline_keyboard_arrow_down_24"
             android:text="Something went wrong"
             android:drawablePadding="10dp"
             android:layout_margin="12dp"

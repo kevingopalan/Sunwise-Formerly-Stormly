@@ -274,6 +274,7 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
                 detectedLocationList.clear();
                 detectedLocationList.add(name);
                 detectedLocationAdapter.notifyDataSetChanged();
+                writeToPreference(name);
                 usDetectedLocationList.clear();
                 usDetectedLocationList.add(name);
                 isLocationDetectionInProgress = false;
@@ -295,7 +296,6 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
                 .setTitle("Confirm Location")
                 .setMessage("Use this location?\n\n" + result.getDisplayName())
                 .setPositiveButton("Yes", (d, w) -> {
-                    writeToPreference(address);
                     navigateToForecast(address);
                 })
                 .setNegativeButton("No", (d, w) -> {})

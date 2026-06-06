@@ -56,7 +56,11 @@ public class AlertsRecyclerViewAdapter extends RecyclerView.Adapter<AlertsRecycl
             holder.textAlertContent.setText("Unknown: " + alertContent);
         }
 
-        // Handle the visibility of the description based on the expanded state
+        // Handle the visibility of the description and arrow direction based on the expanded state
+        int arrowRes = expandedStates[position] ? R.drawable.baseline_keyboard_arrow_up_24 : R.drawable.baseline_keyboard_arrow_down_24;
+        holder.textAlertContent.setCompoundDrawablesWithIntrinsicBounds(R.drawable.baseline_warning_24, 0, arrowRes, 0);
+        holder.textAlertContent.setCompoundDrawablePadding(10);
+
         if (expandedStates[position]) {
             holder.textAlertDescription.setVisibility(View.VISIBLE);
             holder.textAlertDescription.setText(description);

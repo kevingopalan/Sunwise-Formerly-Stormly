@@ -30,17 +30,31 @@
                 app:layout_constraintTop_toTopOf="parent" />
 
             <TextView
+                android:id="@+id/alertsLocation"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:fontFamily="@font/montsemibold"
+                android:text="Location Name"
+                android:textColor="?attr/colorOnBackground"
+                android:textSize="16sp"
+                android:textAlignment="center"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/alertsText" />
+
+            <TextView
                 android:id="@+id/noData"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/montmedium"
+                android:fontFamily="@font/montsemibold"
                 android:text="No alerts at the time."
                 android:textColor="#999999"
                 android:textSize="20dp"
                 android:layout_marginTop="100dp"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/alertsText" />
+                app:layout_constraintTop_toBottomOf="@id/alertsLocation" />
                 <!--android:visibility="gone" />-->
 
             <androidx.recyclerview.widget.RecyclerView
@@ -49,12 +63,12 @@
                 android:layout_height="wrap_content"
                 android:layout_marginLeft="20dp"
                 android:layout_marginRight="20dp"
-                android:layout_marginTop="50dp"
+                android:layout_marginTop="20dp"
                 android:paddingBottom="20dp"
                 android:background="@drawable/main_background"
                 android:overScrollMode="never"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/alertsText"
+                app:layout_constraintTop_toBottomOf="@id/alertsLocation"
                 tools:ignore="UnusedAttribute" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>

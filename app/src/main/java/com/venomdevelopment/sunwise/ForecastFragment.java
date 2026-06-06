@@ -33,15 +33,20 @@ import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.github.mikephil.charting.buffer.BarBuffer;
 import com.github.mikephil.charting.charts.BarChart;
+import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.AxisBase;
 import com.github.mikephil.charting.data.BarData;
 import com.github.mikephil.charting.data.BarDataSet;
 import com.github.mikephil.charting.data.BarEntry;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.components.YAxis;
+import com.github.mikephil.charting.data.Entry;
+import com.github.mikephil.charting.data.LineData;
+import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
 import com.github.mikephil.charting.formatter.ValueFormatter;
 import com.github.mikephil.charting.renderer.BarChartRenderer;
+import com.github.mikephil.charting.renderer.LineChartRenderer;
 import com.github.mikephil.charting.utils.Transformer;
 import com.github.mikephil.charting.interfaces.datasets.IBarDataSet;
 import com.github.mikephil.charting.animation.ChartAnimator;
@@ -93,7 +98,9 @@ public class ForecastFragment extends Fragment {
     private AdView forecastAdView;
     private final Handler reloadHandler = new Handler(Looper.getMainLooper());
     private FloatingActionButton reloadFab;
-    private BarChart hourlyBarChart, dailyBarChart;
+    private BarChart dailyBarChart;
+    private LineChart hourlyBarChart;
+    private Boolean daytime = false;
 
     @Nullable
     @Override
@@ -146,8 +153,6 @@ public class ForecastFragment extends Fragment {
 
     private void initCharts() {
         if (hourlyBarChart != null) {
-            hourlyBarChart.setDrawBarShadow(false);
-            hourlyBarChart.setDrawValueAboveBar(true);
             hourlyBarChart.getDescription().setEnabled(false);
             hourlyBarChart.setDrawGridBackground(false);
             hourlyBarChart.setPinchZoom(false);
@@ -337,6 +342,7 @@ public class ForecastFragment extends Fragment {
         for (int i = 0; i < periods.length(); i++) {
             JSONObject p = periods.getJSONObject(i);
             String name = p.getString("name");
+            daytime = p.getBoolean("isDaytime");
             String temp = formatTemperature(p.getDouble("temperature"), tempUnit);
             SpannableString ss = new SpannableString(temp);
             int color = ContextCompat.getColor(requireContext(), p.getBoolean("isDaytime") ? R.color.df_high : R.color.df_low);
@@ -407,7 +413,7 @@ public class ForecastFragment extends Fragment {
         updateLottieAnimation(current.getString("icon"));
 
         ArrayList<String> temps = new ArrayList<>(), times = new ArrayList<>(), icons = new ArrayList<>(), precips = new ArrayList<>(), hums = new ArrayList<>(), lotties = new ArrayList<>(), descs = new ArrayList<>();
-        ArrayList<BarEntry> entries = new ArrayList<>();
+        ArrayList<Entry> entries = new ArrayList<>();
         ArrayList<String> labels = new ArrayList<>();
 
         DateTimeFormatter outFmt = use24HourFormat ? DateTimeFormatter.ofPattern("HH:00") : DateTimeFormatter.ofPattern("h:00 a");
@@ -439,11 +445,30 @@ public class ForecastFragment extends Fragment {
 
         ArrayList<BarEntry> entries = new ArrayList<>();
         ArrayList<String> labels = new ArrayList<>();
+
         for (int i = 0; i < days.size(); i++) {
-            float low = Math.min(days.get(i), nights.get(i));
-            float high = Math.max(days.get(i), nights.get(i));
+
+            int dayIndex = daytime ? i : i - 1;
+
+            if (dayIndex < 0) {
+                continue;
+            } else {
+                days.size();
+            }
+
+            float day = days.get(dayIndex);
+            float night = nights.get(i);
+
+            float low = Math.min(day, night);
+            float high = Math.max(day, night);
+
             entries.add(new BarEntry(i, new float[]{low, high - low}));
-            labels.add(LocalDate.now().plusDays(i).format(DateTimeFormatter.ofPattern("EEE")));
+
+            labels.add(
+                    LocalDate.now()
+                            .plusDays(i)
+                            .format(DateTimeFormatter.ofPattern("EEE"))
+            );
         }
         BarDataSet ds = new BarDataSet(entries, "Daily");
         ds.setColors(new int[]{ContextCompat.getColor(requireContext(), R.color.chart_low), ContextCompat.getColor(requireContext(), R.color.chart_high)});
@@ -494,52 +519,55 @@ public class ForecastFragment extends Fragment {
         dailyBarChart.invalidate();
     }
 
-    private void setupHourlyChart(ArrayList<BarEntry> entries, ArrayList<String> labels) {
+    private void setupHourlyChart(ArrayList<Entry> entries, ArrayList<String> labels) {
         if (hourlyBarChart == null) return;
         int colorOnSurface = getThemeColor(com.google.android.material.R.attr.colorOnSurface);
         Typeface tf = ResourcesCompat.getFont(requireContext(), R.font.montsemibold);
 
-        BarDataSet ds = new BarDataSet(entries, "Hourly");
+        LineDataSet ds = new LineDataSet(entries, "Hourly");
         ds.setColor(ContextCompat.getColor(requireContext(), R.color.chart_bar));
-        
+
         ds.setDrawValues(true);
         ds.setValueTextColor(colorOnSurface);
+        ds.setDrawFilled(true);
+        ds.setFillDrawable(ContextCompat.getDrawable(requireContext(), R.drawable.linegraphgradient));
         ds.setValueTypeface(tf);
         ds.setValueTextSize(14f);
+        ds.setCircleColor(getResources().getColor(R.color.md_theme_primary));
+        ds.setCircleHoleColor(getResources().getColor(R.color.md_theme_primary));
+        ds.setColor(getResources().getColor(R.color.md_theme_primary));
+        ds.setLineWidth(4f);
+        ds.setDrawCircleHole(false);
+        ds.setDrawCircles(false);
         ds.setValueFormatter(new ValueFormatter() {
             @Override
-            public String getBarLabel(BarEntry entry) {
+            public String getPointLabel(Entry entry) {
+                if (entry.getX() % 2 != 0) {
+                    return "";
+                }
                 return Math.round(entry.getY()) + "°";
             }
         });
 
-        hourlyBarChart.setRenderer(new RoundedBarChartRenderer(hourlyBarChart, hourlyBarChart.getAnimator(), hourlyBarChart.getViewPortHandler(), Utils.convertDpToPixel(16f)));
-        BarData data = new BarData(ds);
-        data.setBarWidth(0.6f);
+        hourlyBarChart.setRenderer(new LineChartRenderer(hourlyBarChart, hourlyBarChart.getAnimator(), hourlyBarChart.getViewPortHandler()));
+        LineData data = new LineData(ds);
         hourlyBarChart.setData(data);
         hourlyBarChart.setExtraBottomOffset(30f);
-        
+
         XAxis x = hourlyBarChart.getXAxis();
         x.setValueFormatter(new IndexAxisValueFormatter(labels));
         x.setPosition(XAxis.XAxisPosition.BOTTOM);
-        x.setGranularity(1f);
-        x.setLabelRotationAngle(-45f);
+        x.setGranularity(4f);
         x.setTextColor(colorOnSurface);
         x.setTypeface(tf);
-        x.setTextSize(14f);
+        x.setTextSize(12f);
         x.setDrawGridLines(false);
         x.setYOffset(10f);
 
-        YAxis y = hourlyBarChart.getAxisLeft();
-        y.setTextColor(colorOnSurface);
-        y.setTypeface(tf);
-        y.setTextSize(14f);
-        y.setSpaceTop(25f);
-        y.setDrawGridLines(false);
-
-        hourlyBarChart.setVisibleXRangeMaximum(6f);
+        hourlyBarChart.setVisibleXRangeMaximum(12f);
         hourlyBarChart.moveViewToX(0f);
         hourlyBarChart.getAxisRight().setEnabled(false);
+        hourlyBarChart.getAxisLeft().setEnabled(false);
         hourlyBarChart.getLegend().setEnabled(false);
         hourlyBarChart.invalidate();
     }
