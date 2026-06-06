@@ -1,2 +1,6 @@
 /build
 /src/main/res/values/secrets.xml
+/release/app-release.apk
+/release/baselineProfiles/0/app-release.dm
+/release/baselineProfiles/1/app-release.dm
+/release/output-metadata.json
