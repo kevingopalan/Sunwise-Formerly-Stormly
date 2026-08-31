@@ -18,3 +18,4 @@ local.properties
 /.idea/deviceManager.xml
 /.kotlin/errors/errors-*
 /.kotlin/sessions/kotlin-compiler-*
+/app/.idea/

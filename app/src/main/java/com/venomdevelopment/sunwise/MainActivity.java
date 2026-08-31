@@ -173,7 +173,7 @@ public class MainActivity extends AppCompatActivity
 
     private void maybeShowInterstitialAd() {
         fragmentSwitchCount++;
-        if (fragmentSwitchCount % 3 == 0 && mInterstitialAd != null) {
+        if (fragmentSwitchCount % 5 == 0 && mInterstitialAd != null) {
             mInterstitialAd.show(this);
             mInterstitialAd = null;
             loadInterstitialAd();
@@ -182,7 +182,7 @@ public class MainActivity extends AppCompatActivity
 
     private void maybeShowInterstitialAdOrSwitch(Fragment fragment, String tag, int navId) {
         fragmentSwitchCount++;
-        if (fragmentSwitchCount % 3 == 0 && mInterstitialAd != null) {
+        if (fragmentSwitchCount % 5 == 0 && mInterstitialAd != null) {
             pendingFragment = fragment;
             pendingTag = tag;
             navigationView.setCheckedItem(navId);
