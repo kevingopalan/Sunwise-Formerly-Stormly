@@ -1,27 +1,14 @@
 package com.venomdevelopment.sunwise;
 
-import static androidx.core.content.ContentProviderCompat.requireContext;
-
-import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.Context;
-import android.content.res.Configuration;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.MenuItem;
-import android.view.Window;
-import android.view.WindowManager;
-import android.view.View;
-import android.widget.FrameLayout;
-import android.widget.Toast;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.app.AppCompatDelegate;
-import androidx.appcompat.widget.Toolbar;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
@@ -30,14 +17,13 @@ import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
 import com.google.android.gms.ads.AdRequest;
-import com.google.android.gms.ads.AdSize;
 import com.google.android.gms.ads.AdView;
 import com.google.android.gms.ads.LoadAdError;
 import com.google.android.gms.ads.MobileAds;
 import com.google.android.gms.ads.AdListener;
-import com.google.android.gms.ads.admanager.AdManagerAdRequest;
 import com.google.android.gms.ads.interstitial.InterstitialAd;
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback;
+import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.navigation.NavigationView;
 
 public class MainActivity extends AppCompatActivity
@@ -45,15 +31,11 @@ public class MainActivity extends AppCompatActivity
         HomeFragment.OnNavigateToForecastListener {
 
     private DrawerLayout drawerLayout;
-    private ActionBarDrawerToggle drawerToggle;
     private NavigationView navigationView;
     private FragmentManager fragmentManager;
     private AdView adView;
-    private String currentDrawerFragmentTag = "home"; // Track current drawer fragment
     private InterstitialAd mInterstitialAd;
     private int fragmentSwitchCount = 0;
-    private Fragment pendingFragment = null;
-    private String pendingTag = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -72,6 +54,7 @@ public class MainActivity extends AppCompatActivity
         }
 
         setContentView(R.layout.activity_main);
+        getWindow().setStatusBarColor(ContextCompat.getColor(this, R.color.md_theme_surface));
 
         // Initialize MobileAds
         MobileAds.initialize(this, initializationStatus -> {
@@ -82,7 +65,7 @@ public class MainActivity extends AppCompatActivity
         setupAdView();
 
         // Setup toolbar
-        Toolbar toolbar = findViewById(R.id.toolbar);
+        MaterialToolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
         // Setup navigation drawer
@@ -90,49 +73,32 @@ public class MainActivity extends AppCompatActivity
         navigationView = findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
 
-        // Setup drawer toggle
-        drawerToggle = new ActionBarDrawerToggle(
-                this, drawerLayout, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
-        drawerLayout.addDrawerListener(drawerToggle);
-        drawerToggle.syncState();
+        toolbar.setNavigationIcon(R.drawable.baseline_menu_24);
+        toolbar.setNavigationContentDescription(R.string.navigation_drawer_open);
+        toolbar.setNavigationOnClickListener(view -> drawerLayout.openDrawer(GravityCompat.START));
 
         // Get fragment manager
         fragmentManager = getSupportFragmentManager();
 
-        // Set default fragment (Home)
-        if (savedInstanceState == null) {
-            loadFragment(new HomeFragment(), "home");
-            navigationView.setCheckedItem(R.id.nav_home);
-        } else {
-            // Restore the current drawer fragment if it exists
-            Fragment currentFragment = fragmentManager.findFragmentById(R.id.fragment_container);
-            if (currentFragment == null) {
-                // No fragment exists, restore the home fragment
-                loadFragment(new HomeFragment(), "home");
-                navigationView.setCheckedItem(R.id.nav_home);
-            } else {
-                // Fragment exists, update the navigation selection based on the fragment tag
-                String fragmentTag = currentFragment.getTag();
-                if (fragmentTag != null) {
-                    currentDrawerFragmentTag = fragmentTag;
-                    switch (fragmentTag) {
-                        case "home":
-                            navigationView.setCheckedItem(R.id.nav_home);
-                            break;
-                        case "alerts":
-                            navigationView.setCheckedItem(R.id.nav_alerts);
-                            break;
-                        case "settings":
-                            navigationView.setCheckedItem(R.id.nav_settings);
-                            break;
-                        default:
-                            navigationView.setCheckedItem(R.id.nav_home);
-                            break;
-                    }
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+                    drawerLayout.closeDrawer(GravityCompat.START);
+                } else if (fragmentManager.getBackStackEntryCount() > 0) {
+                    fragmentManager.popBackStack();
+                } else {
+                    setEnabled(false);
+                    getOnBackPressedDispatcher().onBackPressed();
                 }
             }
+        });
+
+        // Set default fragment (Home)
+        if (savedInstanceState == null) {
+            replaceFragment(new HomeFragment(), "home");
+            navigationView.setCheckedItem(R.id.nav_home);
         }
-        loadInterstitialAd();
 //        showTesterDialog();
     }
 
@@ -180,43 +146,6 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    private void maybeShowInterstitialAdOrSwitch(Fragment fragment, String tag, int navId) {
-        fragmentSwitchCount++;
-        if (fragmentSwitchCount % 5 == 0 && mInterstitialAd != null) {
-            pendingFragment = fragment;
-            pendingTag = tag;
-            navigationView.setCheckedItem(navId);
-            mInterstitialAd.setFullScreenContentCallback(new com.google.android.gms.ads.FullScreenContentCallback() {
-                @Override
-                public void onAdDismissedFullScreenContent() {
-                    mInterstitialAd = null;
-                    loadInterstitialAd();
-                    switchFragmentAfterAd();
-                }
-            });
-            mInterstitialAd.show(this);
-        } else {
-            switchFragment(fragment, tag, navId);
-        }
-    }
-
-    private void switchFragmentAfterAd() {
-        if (pendingFragment != null && pendingTag != null) {
-            switchFragment(pendingFragment, pendingTag, -1);
-            pendingFragment = null;
-            pendingTag = null;
-        }
-    }
-
-    private void switchFragment(Fragment fragment, String tag, int navId) {
-        fragmentManager.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE);
-        FragmentTransaction transaction = fragmentManager.beginTransaction();
-        transaction.replace(R.id.fragment_container, fragment, tag);
-        transaction.commit();
-        currentDrawerFragmentTag = tag;
-        if (navId != -1) navigationView.setCheckedItem(navId);
-    }
-
     @Override
     protected void onPause() {
         if (adView != null) {
@@ -242,88 +171,34 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
-    public void onBackPressed() {
-        if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
-            drawerLayout.closeDrawer(GravityCompat.START);
-        } else if (fragmentManager.getBackStackEntryCount() > 0) {
-            // If we're in a forecast fragment, go back to the drawer fragment
-            fragmentManager.popBackStack();
-
-            // Recreate the appropriate drawer fragment since it was destroyed
-            Fragment fragment = null;
-            int navItemId = R.id.nav_home; // Default to home
-
-            switch (currentDrawerFragmentTag) {
-                case "home":
-                    fragment = new HomeFragment();
-                    navItemId = R.id.nav_home;
-                    break;
-                case "alerts":
-                    fragment = new FragmentAlerts();
-                    navItemId = R.id.nav_alerts;
-                    break;
-                case "settings":
-                    fragment = new SettingsFragment();
-                    navItemId = R.id.nav_settings;
-                    break;
-            }
-
-            if (fragment != null) {
-                FragmentTransaction transaction = fragmentManager.beginTransaction();
-                transaction.replace(R.id.fragment_container, fragment, currentDrawerFragmentTag);
-                transaction.commit();
-                navigationView.setCheckedItem(navItemId);
-            }
-        } else {
-            super.onBackPressed();
-        }
-    }
-
-    @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
-        int id = item.getItemId();
         Fragment fragment = null;
         String tag = "";
-
-        if (id == R.id.nav_home) {
+        
+        if (item.getItemId() == R.id.nav_home) {
             fragment = new HomeFragment();
             tag = "home";
-        } else if (id == R.id.nav_alerts) {
+        } else if (item.getItemId() == R.id.nav_alerts) {
             fragment = new FragmentAlerts();
             tag = "alerts";
-        } else if (id == R.id.nav_settings) {
+        } else if (item.getItemId() == R.id.nav_settings) {
             fragment = new SettingsFragment();
             tag = "settings";
         }
 
         if (fragment != null) {
-            maybeShowInterstitialAdOrSwitch(fragment, tag, id);
+            maybeShowInterstitialAd();
+            replaceFragment(fragment, tag);
         }
 
         drawerLayout.closeDrawer(GravityCompat.START);
         return true;
     }
 
-    private void loadFragment(Fragment fragment, String tag) {
+    private void replaceFragment(Fragment fragment, String tag) {
+        fragmentManager.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE);
         FragmentTransaction transaction = fragmentManager.beginTransaction();
-
-        // Remove all existing fragments instead of hiding them
-        Fragment homeFragment = fragmentManager.findFragmentByTag("home");
-        Fragment alertsFragment = fragmentManager.findFragmentByTag("alerts");
-        Fragment settingsFragment = fragmentManager.findFragmentByTag("settings");
-        Fragment snowFragment = fragmentManager.findFragmentByTag("snow_day");
-
-        if (homeFragment != null) transaction.remove(homeFragment);
-        if (alertsFragment != null) transaction.remove(alertsFragment);
-        if (settingsFragment != null) transaction.remove(settingsFragment);
-        if (snowFragment != null) transaction.remove(snowFragment);
-
-        // Add the new fragment
-        transaction.add(R.id.fragment_container, fragment, tag);
-
-        // Track the current drawer fragment
-        currentDrawerFragmentTag = tag;
-
+        transaction.replace(R.id.fragment_container, fragment, tag);
         transaction.commit();
     }
 
@@ -335,27 +210,9 @@ public class MainActivity extends AppCompatActivity
         forecastFragment.setArguments(args);
 
         FragmentTransaction transaction = fragmentManager.beginTransaction();
-
-        // Remove the current drawer fragment to free up memory
-        Fragment currentFragment = fragmentManager.findFragmentByTag(currentDrawerFragmentTag);
-        if (currentFragment != null) {
-            transaction.remove(currentFragment);
-        }
-
+        transaction.addToBackStack(null);
         transaction.replace(R.id.fragment_container, forecastFragment, "forecast");
         transaction.commit();
-    }
-
-    @Override
-    protected void onPostCreate(Bundle savedInstanceState) {
-        super.onPostCreate(savedInstanceState);
-        drawerToggle.syncState();
-    }
-
-    @Override
-    public void onConfigurationChanged(Configuration newConfig) {
-        super.onConfigurationChanged(newConfig);
-        drawerToggle.onConfigurationChanged(newConfig);
     }
 
     private void showTesterDialog() {

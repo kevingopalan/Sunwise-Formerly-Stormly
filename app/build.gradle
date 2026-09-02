@@ -10,7 +10,7 @@ android {
     defaultConfig {
         applicationId "com.venomdevelopment.sunwise"
         minSdk 25
-        targetSdk 35
+        targetSdk 36
         versionCode 19
         versionName "1.0-release"
 
@@ -24,39 +24,40 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
         coreLibraryDesugaringEnabled true
     }
     buildFeatures {
         viewBinding true
     }
     kotlinOptions {
-        jvmTarget = '1.8'
+        jvmTarget = '11'
     }
 }
 dependencies {
+    //noinspection UseTomlInstead
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
     implementation libs.activity
     //noinspection UseTomlInstead
-    implementation 'androidx.appcompat:appcompat:1.7.1'
+    implementation 'androidx.appcompat:appcompat:1.8.0'
     //noinspection UseTomlInstead
-    implementation 'com.google.android.material:material:1.13.0'
+    implementation 'com.google.android.material:material:1.14.0'
     //noinspection UseTomlInstead
     implementation 'com.android.volley:volley:1.2.1'
     //noinspection UseTomlInstead
-    implementation 'androidx.constraintlayout:constraintlayout:2.2.1'
+    implementation 'androidx.constraintlayout:constraintlayout:2.2.2'
     //noinspection UseTomlInstead
-    implementation 'com.google.code.gson:gson:2.13.2'
+    implementation 'com.google.code.gson:gson:2.14.0'
     //noinspection UseTomlInstead
-    implementation 'com.github.bumptech.glide:glide:5.0.5'
+    implementation 'com.github.bumptech.glide:glide:5.0.9'
     implementation libs.core.ktx
     //noinspection UseTomlInstead
-    annotationProcessor 'com.github.bumptech.glide:compiler:5.0.5'
+    annotationProcessor 'com.github.bumptech.glide:compiler:5.0.9'
     //noinspection UseTomlInstead
     implementation 'androidx.recyclerview:recyclerview:1.4.0'
     //noinspection UseTomlInstead
-    implementation 'androidx.core:core-ktx:1.18.0'
+    implementation 'androidx.core:core-ktx:1.19.0'
     //noinspection UseTomlInstead
     implementation "androidx.datastore:datastore-preferences:1.2.1"
     // optional - RxJava2 support
@@ -76,5 +77,6 @@ dependencies {
     implementation libs.play.services.ads
     implementation libs.play.services.location
     implementation libs.review.ktx
+    //noinspection UseTomlInstead
     implementation 'com.github.AppIntro:AppIntro:6.3.1'
 }
