@@ -204,7 +204,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Sunwise Weather"
+                    android:text="Sunwise"
                     android:fontFamily="@font/montbold"
                     android:textColor="?attr/colorOnSurface"
                     android:textSize="18dp"
@@ -213,17 +213,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Version 1.0.0"
-                    android:layout_marginTop="5dp"
-                    android:fontFamily="@font/montsemibold"
-                    android:textColor="?attr/colorOnSurface"
-                    android:textSize="14dp"
-                    android:textAlignment="center" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Your personal weather companion"
+                    android:text="Weather, Simplified."
                     android:layout_marginTop="5dp"
                     android:fontFamily="@font/montsemibold"
                     android:textColor="?attr/colorOnSurface"
