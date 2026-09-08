@@ -130,7 +130,7 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
             if (checkLocationPermission()) {
                 getCurrentLocation();
             } else {
-                requestLocationPermission();
+                Log.d(TAG, "No location permission");
             }
         }
 
@@ -472,7 +472,7 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
     }
 
     private void requestLocationPermission() {
-        requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_PERMISSION_REQUEST_CODE);
+        requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, LOCATION_PERMISSION_REQUEST_CODE);
     }
 
     @Override

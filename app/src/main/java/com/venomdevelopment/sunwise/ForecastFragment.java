@@ -424,7 +424,7 @@ public class ForecastFragment extends Fragment {
         if (current.has("dewpoint")) {
             try {
                 JSONObject dp = current.getJSONObject("dewpoint");
-                weatherViewModel.setDewpoint(Math.round(convertTemperatureForGraph(dp.getDouble("value"), tempUnit)) + "°");
+                weatherViewModel.setDewpoint(formatDewpoint(dp.getDouble("value"), tempUnit));
             } catch (Exception ignored) {}
         } else {
             weatherViewModel.setDewpoint("--");
@@ -562,7 +562,7 @@ public class ForecastFragment extends Fragment {
         ds.setCircleColor(getResources().getColor(R.color.md_theme_primary));
         ds.setCircleHoleColor(getResources().getColor(R.color.md_theme_primary));
         ds.setColor(getResources().getColor(R.color.md_theme_primary));
-        ds.setLineWidth(4f);
+        ds.setLineWidth(2f);
         ds.setDrawCircleHole(false);
         ds.setDrawCircles(false);
         ds.setValueFormatter(new ValueFormatter() {
@@ -622,6 +622,13 @@ public class ForecastFragment extends Fragment {
 
     private String formatTemperature(double temp, String unit) {
         return Math.round(convertTemperatureForGraph(temp, unit)) + ("us".equals(unit) ? "°F" : "°C");
+    }
+
+    private String formatDewpoint(double dewpointCelsius, String unit) {
+        double displayDewpoint = "us".equals(unit)
+                ? dewpointCelsius * 9.0 / 5.0 + 32
+                : dewpointCelsius;
+        return Math.round(displayDewpoint) + ("us".equals(unit) ? "°F" : "°C");
     }
 
     private String formatWind(String speedStr, String direction, String unit) {

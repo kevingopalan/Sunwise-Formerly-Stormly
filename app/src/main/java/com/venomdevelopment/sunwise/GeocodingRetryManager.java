@@ -15,9 +15,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Unified utility class to manage geocoding requests with retry logic, rate limiting, and caching.
- */
 public class GeocodingRetryManager {
     private static final String TAG = "GeocodingRetryManager";
     private static final Map<String, GeocodingResponseParser.GeocodingResult> cache = new ConcurrentHashMap<>();
@@ -82,14 +79,13 @@ public class GeocodingRetryManager {
 
                     if (bestMatch != null) {
                         Address addr = bestMatch;
-                        String displayName = addr.getAddressLine(0);
-                        if (displayName == null) displayName = address;
-                        
+                        String displayName = formatTownName(addr, address);
+
                         GeocodingResponseParser.GeocodingResult result = new GeocodingResponseParser.GeocodingResult(
-                            String.valueOf(addr.getLatitude()),
-                            String.valueOf(addr.getLongitude()),
-                            displayName,
-                            addr.getCountryCode()
+                                String.valueOf(addr.getLatitude()),
+                                String.valueOf(addr.getLongitude()),
+                                displayName,
+                                addr.getCountryCode()
                         );
                         new Handler(Looper.getMainLooper()).post(() -> {
                             cache.put(cacheKey, result);
@@ -108,6 +104,37 @@ public class GeocodingRetryManager {
         }
     }
 
+    private static String formatTownName(Address addr, String fallbackAddress) {
+        if (addr == null) return fallbackAddress;
+
+        // 1. Determine the city / town / municipality
+        String city = addr.getLocality(); // Typically the city/town
+        if (city == null || city.trim().isEmpty()) {
+            city = addr.getSubAdminArea(); // Typically county / district
+        }
+        if (city == null || city.trim().isEmpty()) {
+            city = addr.getFeatureName(); // Sometimes contains the town or point of interest
+        }
+
+        // 2. Determine region / state / country
+        String stateOrRegion = addr.getAdminArea(); // State / Province
+        String country = addr.getCountryCode();
+
+        // 3. Assemble the display string
+        if (city != null && !city.trim().isEmpty()) {
+            StringBuilder sb = new StringBuilder(city);
+            if (stateOrRegion != null && !stateOrRegion.trim().isEmpty()) {
+                sb.append(", ").append(stateOrRegion);
+            } else if (country != null && !country.trim().isEmpty()) {
+                sb.append(", ").append(country);
+            }
+            return sb.toString();
+        }
+
+        // Fall back to address line 0, or user input if everything else is null
+        String line0 = addr.getAddressLine(0);
+        return (line0 != null && !line0.trim().isEmpty()) ? line0 : fallbackAddress;
+    }
     private static void performGeocode(Context context, String address, String userAgent,
                                       String countrycodes,
                                       GeocodingSuccessCallback successCallback,
@@ -205,7 +232,7 @@ public class GeocodingRetryManager {
                     List<Address> addresses = geocoder.getFromLocation(lat, lon, 1);
                     if (addresses != null && !addresses.isEmpty()) {
                         Address addr = addresses.get(0);
-                        String displayName = addr.getAddressLine(0);
+                        String displayName = formatTownName(addr, lat + ", " + lon);
                         GeocodingResponseParser.GeocodingResult result = new GeocodingResponseParser.GeocodingResult(
                             String.valueOf(lat),
                             String.valueOf(lon),

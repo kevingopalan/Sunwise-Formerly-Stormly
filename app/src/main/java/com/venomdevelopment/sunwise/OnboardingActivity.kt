@@ -12,8 +12,7 @@ class OnboardingActivity : AppIntro2() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        setTransformer(AppIntroPageTransformerType.Fade)
-        isWizardMode = true
+        setTransformer(AppIntroPageTransformerType.Depth)
 
         // set colors
         setIndicatorColor(
@@ -93,9 +92,9 @@ class OnboardingActivity : AppIntro2() {
         )
 
         askForPermissions(
-            permissions = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+            permissions = arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION),
             slideNumber = 2,
-            required = true)
+            required = false)
 
 
     }

@@ -54,7 +54,6 @@ public class MainActivity extends AppCompatActivity
         }
 
         setContentView(R.layout.activity_main);
-        getWindow().setStatusBarColor(ContextCompat.getColor(this, R.color.md_theme_surface));
 
         // Initialize MobileAds
         MobileAds.initialize(this, initializationStatus -> {
