@@ -91,11 +91,6 @@ class OnboardingActivity : AppIntro2() {
             )
         )
 
-        askForPermissions(
-            permissions = arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION),
-            slideNumber = 2,
-            required = false)
-
 
     }
 
