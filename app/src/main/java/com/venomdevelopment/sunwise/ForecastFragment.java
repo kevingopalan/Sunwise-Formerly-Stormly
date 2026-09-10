@@ -13,6 +13,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewOutlineProvider;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -148,6 +149,8 @@ public class ForecastFragment extends Fragment {
         reloadFab = view.findViewById(R.id.reloadFab);
         hourlyBarChart = view.findViewById(R.id.hourlyBarGraph);
         dailyBarChart = view.findViewById(R.id.dailyBarGraph);
+        dailyRecyclerView.setClipToOutline(true);
+        dailyRecyclerView.setOutlineProvider(ViewOutlineProvider.BACKGROUND);
         initCharts();
     }
 
@@ -379,8 +382,13 @@ public class ForecastFragment extends Fragment {
         }
 
         if (periods.length() >= 2) {
-            weatherViewModel.setHighTemperature(formatTemperature(periods.getJSONObject(0).getDouble("temperature"), tempUnit));
-            weatherViewModel.setLowTemperature(formatTemperature(periods.getJSONObject(1).getDouble("temperature"), tempUnit));
+            if (daytime) {
+                weatherViewModel.setHighTemperature(formatTemperature(periods.getJSONObject(0).getDouble("temperature"), tempUnit));
+                weatherViewModel.setLowTemperature(formatTemperature(periods.getJSONObject(1).getDouble("temperature"), tempUnit));
+            } else {
+                weatherViewModel.setLowTemperature(formatTemperature(periods.getJSONObject(0).getDouble("temperature"), tempUnit));
+                weatherViewModel.setHighTemperature("--");
+            }
         }
 
         dailyRecyclerView.setAdapter(new DailyForecastAdapter(getContext(), items, times, icons, precips, hums, lotties, descs));

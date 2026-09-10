@@ -9,7 +9,12 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -28,7 +33,10 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class FragmentAlerts extends Fragment {
 
@@ -36,12 +44,16 @@ public class FragmentAlerts extends Fragment {
     private RecyclerView recyclerView;
     private TextView noDataTextView;
     private TextView locationTextView;
+    private EditText searchInput;
+    private Spinner savedLocationsSpinner;
     private AlertsRecyclerViewAdapter adapter;
     private LinearLayout progressBar;
+    private ArrayAdapter<String> savedLocationsAdapter;
 
     private static final String BASE_URL_ALERTS = "https://api.weather.gov/alerts/active?point=";
     private static final String USER_AGENT = "Sunwise/v1 (venomdevelopmentofficial@gmail.com)" + System.getProperty("http.agent");
     private static final String myPref = "addressPref";
+    private static final String PREF_SAVED_LOCATIONS = "saved_locations";
 
     private RequestQueue requestQueue;
 
@@ -63,14 +75,45 @@ public class FragmentAlerts extends Fragment {
         progressBar = view.findViewById(R.id.progressBar);
         noDataTextView = view.findViewById(R.id.noData);
         locationTextView = view.findViewById(R.id.alertsLocation);
+        searchInput = view.findViewById(R.id.alertsSearchInput);
+        savedLocationsSpinner = view.findViewById(R.id.alertsSavedLocationsSpinner);
+
+        savedLocationsAdapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, new ArrayList<>());
+        savedLocationsAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        savedLocationsSpinner.setAdapter(savedLocationsAdapter);
+
+        savedLocationsSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (position <= 0 || savedLocationsAdapter.getCount() <= 1) return;
+                String selected = savedLocationsAdapter.getItem(position);
+                if (selected == null || selected.equals("Select saved location")) return;
+                locationTextView.setText(selected);
+                fetchAlerts(selected);
+            }
+            @Override public void onNothingSelected(AdapterView<?> parent) {}
+        });
+
+        view.findViewById(R.id.alertsSearchButton).setOnClickListener(v -> {
+            String query = searchInput.getText().toString().trim();
+            if (!query.isEmpty()) {
+                locationTextView.setText(query);
+                fetchAlerts(query);
+            } else {
+                Toast.makeText(getContext(), "Enter a location to search", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        populateSavedLocations();
 
         String address = getPreferenceValue();
         if (address.isEmpty()) {
-            Toast.makeText(getContext(), "No address stored in preferences", Toast.LENGTH_SHORT).show();
+            if (savedLocationsAdapter.getCount() <= 1) {
+                Toast.makeText(getContext(), "No address stored in preferences", Toast.LENGTH_SHORT).show();
+            }
         } else {
+            locationTextView.setText(address);
             fetchAlerts(address);
         }
-        locationTextView.setText(address);
         return view;
     }
 
@@ -154,6 +197,20 @@ public class FragmentAlerts extends Fragment {
 
     private void showLoading() { if (progressBar != null) progressBar.setVisibility(View.VISIBLE); }
     private void hideLoading() { if (progressBar != null) progressBar.setVisibility(View.GONE); }
+
+    private void populateSavedLocations() {
+        SharedPreferences sp = requireActivity().getSharedPreferences(myPref, 0);
+        Set<String> set = sp.getStringSet(PREF_SAVED_LOCATIONS, new HashSet<>());
+        List<String> locations = new ArrayList<>();
+        if (set != null) locations.addAll(set);
+        Collections.sort(locations);
+
+        savedLocationsAdapter.clear();
+        savedLocationsAdapter.add("Select saved location");
+        savedLocationsAdapter.addAll(locations);
+        savedLocationsAdapter.notifyDataSetChanged();
+        savedLocationsSpinner.setSelection(0, false);
+    }
 
     public String getPreferenceValue() {
         return requireActivity().getSharedPreferences(myPref, 0).getString("address", "");

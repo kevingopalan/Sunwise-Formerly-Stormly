@@ -46,7 +46,7 @@
             android:layout_marginBottom="8dp"
             app:lottie_autoPlay="true"
             app:lottie_loop="true"
-            app:lottie_rawRes="@raw/clear_day" />
+            app:lottie_rawRes="@raw/not_available" />
         <TextView
                 android:id="@+id/tempTxt"
                 android:layout_width="wrap_content"

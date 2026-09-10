@@ -521,7 +521,7 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
     private void showLocationNeeded(boolean show) {
         locationNeeded.setVisibility(show ? View.VISIBLE : View.GONE);
         if (show) {
-            locationPermissionDeniedText.setText("Location permission is required to detect your current location. Tap to open app settings.");
+            locationPermissionDeniedText.setText("Location permission not granted.");
             locationButton.setVisibility(View.GONE);
         } else {
             locationButton.setVisibility(autoLocationEnabled ? View.GONE : View.VISIBLE);
