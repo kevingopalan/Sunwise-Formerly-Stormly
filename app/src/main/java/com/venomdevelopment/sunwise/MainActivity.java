@@ -62,6 +62,7 @@ public class MainActivity extends AppCompatActivity
 
         // Setup AdView
         setupAdView();
+        loadInterstitialAd();
 
         // Setup toolbar
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
@@ -136,11 +137,18 @@ public class MainActivity extends AppCompatActivity
         });
     }
 
+    static boolean shouldShowInterstitialAd(int navigationCount, boolean adLoaded) {
+        return navigationCount > 0 && navigationCount % 5 == 0 && adLoaded;
+    }
+
     private void maybeShowInterstitialAd() {
         fragmentSwitchCount++;
-        if (fragmentSwitchCount % 5 == 0 && mInterstitialAd != null) {
+
+        if (shouldShowInterstitialAd(fragmentSwitchCount, mInterstitialAd != null)) {
             mInterstitialAd.show(this);
             mInterstitialAd = null;
+            loadInterstitialAd();
+        } else if (fragmentSwitchCount % 5 == 0 && mInterstitialAd == null) {
             loadInterstitialAd();
         }
     }

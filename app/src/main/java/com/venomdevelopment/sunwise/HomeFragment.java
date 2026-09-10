@@ -23,6 +23,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.Filter;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -67,6 +68,8 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 100;
     private static final String USER_AGENT = "Sunwise/v1 (venomdevelopmentofficial@gmail.com)" + System.getProperty("http.agent");
     private static final String PREF_SAVED_LOCATIONS = "saved_locations";
+    private static final String PREF_LOCATION_PERMISSION_DENIED = "location_permission_denied";
+    private static final String VOLLEY_SUGGESTION_TAG = "SUGGESTIONS";
 
     private AutoCompleteTextView search;
     private Button locationButton;
@@ -78,9 +81,7 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
     private final List<String> suggestionList = new ArrayList<>();
     private final Handler searchHandler = new Handler(Looper.getMainLooper());
     private Runnable suggestionRunnable;
-    private Runnable showDropdownRunnable;
     private static final int AUTOCOMPLETE_DEBOUNCE_MS = 300;
-    private static final int AUTOCOMPLETE_SHOW_DELAY_MS = 50;
     private LocationListener activeLocationListener;
     private RequestQueue requestQueue;
     private boolean autoLocationEnabled = true;
@@ -129,6 +130,8 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
         if (autoLocationEnabled) {
             if (checkLocationPermission()) {
                 getCurrentLocation();
+            } else if (isLocationPermissionDenied()) {
+                showLocationNeeded(true);
             } else {
                 Log.d(TAG, "No location permission");
             }
@@ -145,8 +148,31 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
         locationButton = v.findViewById(R.id.locationButton);
         requestQueue = SunwiseApp.getInstance().getRequestQueue();
         locationNeeded.setClickable(true);
+        suggestionAdapter = new ArrayAdapter<String>(requireContext(), android.R.layout.select_dialog_item, suggestionList) {
+            @NonNull
+            @Override
+            public Filter getFilter() {
+                return new Filter() {
+                    @Override
+                    protected FilterResults performFiltering(CharSequence constraint) {
+                        FilterResults results = new FilterResults();
+                        results.values = suggestionList;
+                        results.count = suggestionList.size();
+                        return results;
+                    }
 
-        suggestionAdapter = new ArrayAdapter<>(requireContext(), android.R.layout.select_dialog_item, suggestionList);
+                    @Override
+                    protected void publishResults(CharSequence constraint, FilterResults results) {
+                        if (results != null && results.count > 0) {
+                            notifyDataSetChanged();
+                        } else {
+                            notifyDataSetInvalidated();
+                        }
+                    }
+                };
+            }
+        };
+
         search.setAdapter(suggestionAdapter);
         search.setThreshold(3);
         search.setOnItemClickListener((parent, view, position, id) -> {
@@ -200,18 +226,18 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
     private void loadSavedLocations() {
         SharedPreferences sp = requireActivity().getSharedPreferences(myPref, 0);
         Set<String> savedSet = sp.getStringSet(PREF_SAVED_LOCATIONS, new HashSet<>());
-        
+
         List<String> list = new ArrayList<>(savedSet);
         usSavedLocationsList.clear();
         usSavedLocationsList.addAll(list);
-        
+
         originalSavedLocationsList.clear();
         originalSavedLocationsList.addAll(list);
         savedLocationsList.clear();
         savedLocationsList.addAll(list);
         savedLocationAdapter.notifyDataSetChanged();
         updateSavedLocationsPlaceholder();
-        
+
         startWeatherDataRetry();
     }
 
@@ -330,10 +356,10 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
         if (!isAdded()) return;
         List<String> all = new ArrayList<>(usSavedLocationsList);
         all.addAll(usDetectedLocationList);
-        
+
         Map<String, WeatherViewModel.WeatherSummary> currentMap = weatherViewModel.getLocationWeatherMap().getValue();
         List<String> needingWeather = new ArrayList<>();
-        
+
         for (String loc : all) {
             WeatherViewModel.WeatherSummary summary = currentMap != null ? currentMap.get(loc) : null;
             if (summary == null || summary.temperature == null || summary.temperature.equals("--")) {
@@ -383,6 +409,11 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
         if (suggestionRunnable != null) {
             searchHandler.removeCallbacks(suggestionRunnable);
         }
+
+        if (requestQueue != null) {
+            requestQueue.cancelAll(VOLLEY_SUGGESTION_TAG);
+        }
+
         if (query.trim().isEmpty()) {
             clearSuggestions();
             return;
@@ -392,10 +423,6 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
     }
 
     private void fetchLocationSuggestions(String query) {
-        suggestionList.clear();
-        suggestionAdapter.clear();
-        suggestionAdapter.notifyDataSetChanged();
-
         if (requestQueue == null) {
             Log.w(TAG, "Request queue not initialized");
             return;
@@ -406,6 +433,7 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
             String url = "https://photon.komoot.io/api/?q=" + encoded + "&limit=5&countrycode=us";
             JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, url, null,
                     response -> {
+                        suggestionAdapter.clear();
                         JSONArray features = response.optJSONArray("features");
                         if (features != null) {
                             for (int i = 0; i < features.length(); i++) {
@@ -415,38 +443,32 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
                                 if (props == null) continue;
                                 String suggestion = buildSuggestionFromProperties(props);
                                 if (!suggestion.isEmpty() && !suggestionList.contains(suggestion)) {
-                                    suggestionList.add(suggestion);
+                                    suggestionAdapter.add(suggestion);
                                 }
                             }
                         }
-                        suggestionAdapter.clear();
-                        suggestionAdapter.addAll(suggestionList);
-                        suggestionAdapter.notifyDataSetChanged();
-                        if (showDropdownRunnable != null) {
-                            searchHandler.removeCallbacks(showDropdownRunnable);
-                        }
-                        if (!suggestionList.isEmpty() && search.hasFocus()) {
-                            showDropdownRunnable = search::showDropDown;
-                            searchHandler.postDelayed(showDropdownRunnable, AUTOCOMPLETE_SHOW_DELAY_MS);
-                        }
+
+                        suggestionAdapter.getFilter().filter(search.getText(), count -> {
+                            if (count > 0 && search.hasFocus()) {
+                                search.showDropDown();
+                            }
+                        });
+
                     }, error -> {
-                        Log.e(TAG, "Suggestion request failed", error);
-                        suggestionAdapter.notifyDataSetChanged();
-                    });
+                Log.e(TAG, "Suggestion request failed", error);
+            });
+
+            request.setTag(VOLLEY_SUGGESTION_TAG);
             requestQueue.add(request);
         } catch (Exception e) {
             Log.e(TAG, "Failed to fetch suggestions", e);
-            suggestionAdapter.notifyDataSetChanged();
         }
     }
 
     private void clearSuggestions() {
-        suggestionList.clear();
-        suggestionAdapter.clear();
-        suggestionAdapter.notifyDataSetChanged();
-        if (showDropdownRunnable != null) {
-            searchHandler.removeCallbacks(showDropdownRunnable);
-            showDropdownRunnable = null;
+        if (suggestionAdapter != null) {
+            suggestionAdapter.clear();
+            search.dismissDropDown();
         }
     }
 
@@ -471,7 +493,21 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
                 || ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
     }
 
+    private boolean isLocationPermissionDenied() {
+        return sunwisePrefs != null && sunwisePrefs.getBoolean(PREF_LOCATION_PERMISSION_DENIED, false);
+    }
+
+    private void setLocationPermissionDenied(boolean denied) {
+        if (sunwisePrefs != null) {
+            sunwisePrefs.edit().putBoolean(PREF_LOCATION_PERMISSION_DENIED, denied).apply();
+        }
+    }
+
     private void requestLocationPermission() {
+        if (isLocationPermissionDenied()) {
+            showLocationNeeded(true);
+            return;
+        }
         requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, LOCATION_PERMISSION_REQUEST_CODE);
     }
 
@@ -487,9 +523,11 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
             }
         }
         if (granted) {
+            setLocationPermissionDenied(false);
             showLocationNeeded(false);
             getCurrentLocation();
         } else {
+            setLocationPermissionDenied(true);
             showLocationNeeded(true);
         }
     }
@@ -500,12 +538,15 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
         if (!isAdded()) return;
         if (autoLocationEnabled) {
             if (checkLocationPermission()) {
+                setLocationPermissionDenied(false);
                 if (locationNeeded.getVisibility() == View.VISIBLE) {
                     showLocationNeeded(false);
                 }
                 if (!isLocationDetectionInProgress && detectedLocationList.isEmpty()) {
                     getCurrentLocation();
                 }
+            } else if (isLocationPermissionDenied()) {
+                showLocationNeeded(true);
             } else if (locationNeeded.getVisibility() != View.VISIBLE) {
                 requestLocationPermission();
             }
@@ -532,7 +573,13 @@ public class HomeFragment extends Fragment implements SavedLocationAdapter.OnLoc
         Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
         intent.setData(Uri.fromParts("package", requireContext().getPackageName(), null));
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        startActivity(intent);
+
+        if (intent.resolveActivity(requireContext().getPackageManager()) != null) {
+            startActivity(intent);
+            Toast.makeText(requireContext(), "Tap Permissions to allow Location access.", Toast.LENGTH_LONG).show();
+        } else {
+            Toast.makeText(requireContext(), "Open app settings and tap Permissions.", Toast.LENGTH_LONG).show();
+        }
     }
 
     private void cancelLocationUpdates() {
