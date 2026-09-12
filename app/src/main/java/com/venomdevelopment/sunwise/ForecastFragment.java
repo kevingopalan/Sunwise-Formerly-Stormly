@@ -4,6 +4,9 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
+import java.time.OffsetDateTime;
+import java.time.Duration;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -34,20 +37,15 @@ import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.github.mikephil.charting.buffer.BarBuffer;
 import com.github.mikephil.charting.charts.BarChart;
-import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.AxisBase;
 import com.github.mikephil.charting.data.BarData;
 import com.github.mikephil.charting.data.BarDataSet;
 import com.github.mikephil.charting.data.BarEntry;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.components.YAxis;
-import com.github.mikephil.charting.data.Entry;
-import com.github.mikephil.charting.data.LineData;
-import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
 import com.github.mikephil.charting.formatter.ValueFormatter;
 import com.github.mikephil.charting.renderer.BarChartRenderer;
-import com.github.mikephil.charting.renderer.LineChartRenderer;
 import com.github.mikephil.charting.utils.Transformer;
 import com.github.mikephil.charting.interfaces.datasets.IBarDataSet;
 import com.github.mikephil.charting.animation.ChartAnimator;
@@ -79,6 +77,8 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.progressindicator.CircularProgressIndicator;
 import java.time.LocalDate;
 import android.util.TypedValue;
+import com.airbnb.lottie.LottieCompositionFactory;
+import com.airbnb.lottie.LottieDrawable;
 
 public class ForecastFragment extends Fragment {
 
@@ -86,6 +86,7 @@ public class ForecastFragment extends Fragment {
     private static final String BASE_URL_POINTS = "https://api.weather.gov/points/";
     private static final String USER_AGENT = "Sunwise/v1 (venomdevelopmentofficial@gmail.com)" + System.getProperty("http.agent");
     private LottieAnimationView animationViewForecast;
+    private WeatherHourlyChart customHourlyChart;
     private RequestQueue requestQueue;
     private TextView currentTempTextForecast, highTempTextForecast, lowTempTextForecast, descTextForecast, humidityTextViewForecast, windTextViewForecast, precipitationTextViewForecast, dewpointTextViewForecast, locationDisplay;
     private Button saveLocationButton;
@@ -100,7 +101,6 @@ public class ForecastFragment extends Fragment {
     private final Handler reloadHandler = new Handler(Looper.getMainLooper());
     private FloatingActionButton reloadFab;
     private BarChart dailyBarChart;
-    private LineChart hourlyBarChart;
     private Boolean daytime = false;
 
     @Nullable
@@ -147,24 +147,14 @@ public class ForecastFragment extends Fragment {
         progressBar = view.findViewById(R.id.progressBar);
         forecastAdView = view.findViewById(R.id.forecast_ad);
         reloadFab = view.findViewById(R.id.reloadFab);
-        hourlyBarChart = view.findViewById(R.id.hourlyBarGraph);
         dailyBarChart = view.findViewById(R.id.dailyBarGraph);
         dailyRecyclerView.setClipToOutline(true);
         dailyRecyclerView.setOutlineProvider(ViewOutlineProvider.BACKGROUND);
+        customHourlyChart = view.findViewById(R.id.customHourlyChart);
         initCharts();
     }
 
     private void initCharts() {
-        if (hourlyBarChart != null) {
-            hourlyBarChart.getDescription().setEnabled(false);
-            hourlyBarChart.setDrawGridBackground(false);
-            hourlyBarChart.setPinchZoom(false);
-            hourlyBarChart.setTouchEnabled(true);
-            hourlyBarChart.setDragEnabled(true);
-            hourlyBarChart.setScaleYEnabled(false);
-            hourlyBarChart.setScaleXEnabled(true);
-            hourlyBarChart.getLegend().setEnabled(false);
-        }
         if (dailyBarChart != null) {
             dailyBarChart.setDrawBarShadow(false);
             dailyBarChart.setDrawValueAboveBar(true);
@@ -292,7 +282,7 @@ public class ForecastFragment extends Fragment {
             try {
                 JSONObject props = response.getJSONObject("properties");
                 fetchDailyForecast(props.getString("forecast"));
-                fetchHourlyForecast(props.getString("forecastHourly"));
+                fetchHourlyAndGridData(props.getString("forecastHourly"), props.getString("forecastGridData"));
             } catch (JSONException e) {
                 hideLoading();
             }
@@ -302,6 +292,51 @@ public class ForecastFragment extends Fragment {
                 Map<String, String> h = new HashMap<>();
                 h.put("User-Agent", USER_AGENT);
                 h.put("Accept", "application/geo+json,application/json");
+                return h;
+            }
+        };
+        request.setShouldCache(false);
+        requestQueue.add(request);
+    }
+
+    private void fetchHourlyAndGridData(String hourlyUrl, String gridUrl) {
+        JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, hourlyUrl, null, response -> {
+            if (!isAdded()) return;
+            try {
+                JSONArray periods = response.getJSONObject("properties").getJSONArray("periods");
+                fetchGridData(gridUrl, periods);
+            } catch (JSONException e) { e.printStackTrace(); }
+        }, err -> {}) {
+            @Override
+            public Map<String, String> getHeaders() {
+                Map<String, String> h = new HashMap<>();
+                h.put("User-Agent", USER_AGENT);
+                return h;
+            }
+        };
+        request.setShouldCache(false);
+        requestQueue.add(request);
+    }
+
+    private void fetchGridData(String gridUrl, JSONArray hourlyPeriods) {
+        JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, gridUrl, null, response -> {
+            if (!isAdded()) return;
+            try {
+                JSONObject props = response.getJSONObject("properties");
+                JSONArray qpfValues = new JSONArray();
+                if (props.has("quantitativePrecipitation")) {
+                    qpfValues = props.getJSONObject("quantitativePrecipitation").getJSONArray("values");
+                }
+                updateHourlyUI(hourlyPeriods, qpfValues);
+            } catch (JSONException e) { e.printStackTrace(); }
+        }, err -> {
+            // Fallback to updating UI without grid data if grid call fails
+            try { updateHourlyUI(hourlyPeriods, new JSONArray()); } catch (JSONException e) { e.printStackTrace(); }
+        }) {
+            @Override
+            public Map<String, String> getHeaders() {
+                Map<String, String> h = new HashMap<>();
+                h.put("User-Agent", USER_AGENT);
                 return h;
             }
         };
@@ -363,6 +398,7 @@ public class ForecastFragment extends Fragment {
 
         ArrayList<SpannableString> items = new ArrayList<>();
         ArrayList<String> times = new ArrayList<>(), icons = new ArrayList<>(), precips = new ArrayList<>(), hums = new ArrayList<>(), lotties = new ArrayList<>(), descs = new ArrayList<>();
+        ArrayList<Boolean> isDaytimes = new ArrayList<>();
 
         for (int j = 0; j < periods.length(); j++) {
             JSONObject p = periods.getJSONObject(j);
@@ -379,6 +415,7 @@ public class ForecastFragment extends Fragment {
             hums.add(p.has("relativeHumidity") ? p.getJSONObject("relativeHumidity").optInt("value") + "%" : "N/A");
             lotties.add(p.getString("icon"));
             descs.add(p.getString("shortForecast"));
+            isDaytimes.add(p.getBoolean("isDaytime"));
         }
 
         if (periods.length() >= 2) {
@@ -391,30 +428,18 @@ public class ForecastFragment extends Fragment {
             }
         }
 
-        dailyRecyclerView.setAdapter(new DailyForecastAdapter(getContext(), items, times, icons, precips, hums, lotties, descs));
+        dailyRecyclerView.setAdapter(new DailyForecastAdapter(getContext(), items, times, icons, precips, hums, lotties, descs, isDaytimes));
         hideLoading();
     }
 
-    private void fetchHourlyForecast(String url) {
-        JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, url, null, response -> {
-            if (!isAdded()) return;
-            try {
-                JSONArray periods = response.getJSONObject("properties").getJSONArray("periods");
-                updateHourlyUI(periods);
-            } catch (JSONException e) { e.printStackTrace(); }
-        }, err -> {}) {
-            @Override
-            public Map<String, String> getHeaders() {
-                Map<String, String> h = new HashMap<>();
-                h.put("User-Agent", USER_AGENT);
-                return h;
-            }
-        };
-        request.setShouldCache(false);
-        requestQueue.add(request);
+
+    class QpfBlock {
+        OffsetDateTime start;
+        OffsetDateTime end;
+        double valuePerHour;
     }
 
-    private void updateHourlyUI(JSONArray periods) throws JSONException {
+    private void updateHourlyUI(JSONArray periods, JSONArray qpfValues) throws JSONException {
         if (periods.length() == 0) return;
         JSONObject current = periods.getJSONObject(0);
         weatherViewModel.setCurrentTemperature(formatTemperature(current.getDouble("temperature"), tempUnit));
@@ -439,14 +464,36 @@ public class ForecastFragment extends Fragment {
         }
 
         setDynamicBackgroundFromIcon(current.getString("icon"), current.getBoolean("isDaytime"));
-        updateLottieAnimation(current.getString("icon"));
+        updateLottieAnimation(current.getString("icon"), current.getBoolean("isDaytime"));
 
         ArrayList<String> temps = new ArrayList<>(), times = new ArrayList<>(), icons = new ArrayList<>(), precips = new ArrayList<>(), hums = new ArrayList<>(), lotties = new ArrayList<>(), descs = new ArrayList<>();
-        ArrayList<Entry> entries = new ArrayList<>();
-        ArrayList<String> labels = new ArrayList<>();
+        ArrayList<Boolean> isDaytimes = new ArrayList<>();
 
         DateTimeFormatter outFmt = use24HourFormat ? DateTimeFormatter.ofPattern("HH:00") : DateTimeFormatter.ofPattern("h:00 a");
+        List<QpfBlock> qpfBlocks = new ArrayList<>();
+        if (qpfValues != null) {
+            for (int i = 0; i < qpfValues.length(); i++) {
+                try {
+                    JSONObject valObj = qpfValues.getJSONObject(i);
+                    String[] parts = valObj.getString("validTime").split("/");
+                    if (parts.length == 2) {
+                        OffsetDateTime start = OffsetDateTime.parse(parts[0]);
+                        long hours = Duration.parse(parts[1]).toHours();
+                        if (hours <= 0) hours = 1;
 
+                        OffsetDateTime end = start.plusHours(hours);
+                        double totalVal = valObj.optDouble("value", 0.0);
+
+                        QpfBlock block = new QpfBlock();
+                        block.start = start;
+                        block.end = end;
+                        // Distribute total mm across the hours in the block
+                        block.valuePerHour = totalVal / hours;
+                        qpfBlocks.add(block);
+                    }
+                } catch (Exception ignored) {}
+            }
+        }
         for (int i = 0; i < Math.min(periods.length(), 48); i++) {
             JSONObject p = periods.getJSONObject(i);
             double val = p.getDouble("temperature");
@@ -459,12 +506,57 @@ public class ForecastFragment extends Fragment {
             hums.add(p.has("relativeHumidity") ? p.getJSONObject("relativeHumidity").optInt("value") + "%" : "N/A");
             lotties.add(p.getString("icon"));
             descs.add(p.getString("shortForecast"));
+            isDaytimes.add(p.getBoolean("isDaytime"));
 
-            entries.add(new BarEntry(i, (float) convertTemperatureForGraph(val, tempUnit)));
-            labels.add(timeLabel);
         }
-        setupHourlyChart(entries, labels);
-        horizontalHourlyRecyclerView.setAdapter(new HorizontalHourlyForecastAdapter(getContext(), temps, times, icons, precips, hums, lotties, descs));
+        boolean isUsUnits = "us".equals(tempUnit);
+        if (customHourlyChart != null) {
+            customHourlyChart.setUseUsUnits(isUsUnits);
+        }
+
+        // Build points for your Custom Beta Chart
+        List<WeatherHourlyChart.WeatherPoint> customPoints = new ArrayList<>();
+        for (int i = 0; i < Math.min(periods.length(), 24); i++) {
+            JSONObject p = periods.getJSONObject(i);
+            int val = (int) Math.round(convertTemperatureForGraph(p.getDouble("temperature"), tempUnit));
+            int precipChance = p.getJSONObject("probabilityOfPrecipitation").optInt("value", 0);
+
+            OffsetDateTime periodStart = OffsetDateTime.parse(p.getString("startTime"));
+
+            // Find if this hour falls inside a precipitation block
+            double hourlyPrecipMm = 0.0;
+            for (QpfBlock block : qpfBlocks) {
+                if (!periodStart.isBefore(block.start) && periodStart.isBefore(block.end)) {
+                    hourlyPrecipMm = block.valuePerHour;
+                    break;
+                }
+            }
+
+            double precipAmount = isUsUnits ? (hourlyPrecipMm / 25.4) : hourlyPrecipMm;
+
+            LocalDateTime startTimeLocal = periodStart.toLocalDateTime();
+            String timeLabel = (i == 0) ? "Now" : startTimeLocal.format(outFmt);
+
+            String iconUrl = p.getString("icon");
+            String animName = WeatherIconUtils.getAnimationResourceName(iconUrl, p.getBoolean("isDaytime"));
+            int resId = getResources().getIdentifier(animName, "raw", requireContext().getPackageName());
+
+            LottieDrawable lottieDrawable = new LottieDrawable();
+            if (resId != 0) {
+                LottieCompositionFactory.fromRawRes(requireContext(), resId).addListener(composition -> {
+                    lottieDrawable.setComposition(composition);
+                    lottieDrawable.setRepeatCount(LottieDrawable.INFINITE);
+                    lottieDrawable.playAnimation();
+                });
+            }
+
+            customPoints.add(new WeatherHourlyChart.WeatherPoint(timeLabel, val, precipChance, precipAmount, lottieDrawable));
+        }
+
+        if (customHourlyChart != null) {
+            customHourlyChart.setPoints(customPoints);
+        }
+        horizontalHourlyRecyclerView.setAdapter(new HorizontalHourlyForecastAdapter(getContext(), temps, times, icons, precips, hums, lotties, descs, isDaytimes));
     }
 
     private void setupDailyChart(ArrayList<Float> days, ArrayList<Float> nights) {
@@ -553,62 +645,9 @@ public class ForecastFragment extends Fragment {
         dailyBarChart.invalidate();
     }
 
-    private void setupHourlyChart(ArrayList<Entry> entries, ArrayList<String> labels) {
-        if (hourlyBarChart == null) return;
-        int colorOnSurface = getThemeColor(com.google.android.material.R.attr.colorOnSurface);
-        Typeface tf = ResourcesCompat.getFont(requireContext(), R.font.montsemibold);
-
-        LineDataSet ds = new LineDataSet(entries, "Hourly");
-        ds.setColor(ContextCompat.getColor(requireContext(), R.color.chart_bar));
-
-        ds.setDrawValues(true);
-        ds.setValueTextColor(colorOnSurface);
-        ds.setDrawFilled(true);
-        ds.setFillDrawable(ContextCompat.getDrawable(requireContext(), R.drawable.linegraphgradient));
-        ds.setValueTypeface(tf);
-        ds.setValueTextSize(14f);
-        ds.setCircleColor(getResources().getColor(R.color.md_theme_primary));
-        ds.setCircleHoleColor(getResources().getColor(R.color.md_theme_primary));
-        ds.setColor(getResources().getColor(R.color.md_theme_primary));
-        ds.setLineWidth(2f);
-        ds.setDrawCircleHole(false);
-        ds.setDrawCircles(false);
-        ds.setValueFormatter(new ValueFormatter() {
-            @Override
-            public String getPointLabel(Entry entry) {
-                if (entry.getX() % 2 != 0) {
-                    return "";
-                }
-                return Math.round(entry.getY()) + "°";
-            }
-        });
-
-        hourlyBarChart.setRenderer(new LineChartRenderer(hourlyBarChart, hourlyBarChart.getAnimator(), hourlyBarChart.getViewPortHandler()));
-        LineData data = new LineData(ds);
-        hourlyBarChart.setData(data);
-        hourlyBarChart.setExtraBottomOffset(30f);
-
-        XAxis x = hourlyBarChart.getXAxis();
-        x.setValueFormatter(new IndexAxisValueFormatter(labels));
-        x.setPosition(XAxis.XAxisPosition.BOTTOM);
-        x.setGranularity(4f);
-        x.setTextColor(colorOnSurface);
-        x.setTypeface(tf);
-        x.setTextSize(12f);
-        x.setDrawGridLines(false);
-        x.setYOffset(10f);
-
-        hourlyBarChart.setVisibleXRangeMaximum(12f);
-        hourlyBarChart.moveViewToX(0f);
-        hourlyBarChart.getAxisRight().setEnabled(false);
-        hourlyBarChart.getAxisLeft().setEnabled(false);
-        hourlyBarChart.getLegend().setEnabled(false);
-        hourlyBarChart.invalidate();
-    }
-
-    private void updateLottieAnimation(String iconUrl) {
+    private void updateLottieAnimation(String iconUrl, boolean isDaytime) {
         if (animationViewForecast == null) return;
-        String name = extractAnimationNameFromIcon(iconUrl);
+        String name = WeatherIconUtils.getAnimationResourceName(iconUrl, isDaytime);
         int resId = getResources().getIdentifier(name, "raw", getContext().getPackageName());
         if (resId != 0) {
             animationViewForecast.setAnimation(resId);
@@ -699,22 +738,36 @@ public class ForecastFragment extends Fragment {
     private void showLoading() { if (progressBar != null) progressBar.setVisibility(View.VISIBLE); }
     private void hideLoading() { if (progressBar != null) progressBar.setVisibility(View.GONE); }
 
-    private String extractAnimationNameFromIcon(String iconUrl) {
-        if (iconUrl == null || iconUrl.isEmpty()) return "clear_day";
-        if (iconUrl.contains("tsra")) return "lightning_bolt";
-        if (iconUrl.contains("rain")) return "rain";
-        if (iconUrl.contains("snow")) return "snow";
-        if (iconUrl.contains("sct") || iconUrl.contains("few")) return "partly_cloudy_day";
-        if (iconUrl.contains("ovc") || iconUrl.contains("bkn")) return "cloudy";
-        return "clear_day";
-    }
-
     private void setDynamicBackgroundFromIcon(String iconUrl, boolean isDaytime) {
         if (getView() == null) return;
-        int resId = isDaytime ? R.drawable.gradient_clear_day : R.drawable.gradient_clear_night;
-        if (iconUrl.contains("rain")) resId = isDaytime ? R.drawable.gradient_rain_day : R.drawable.gradient_rain_night;
-        else if (iconUrl.contains("snow")) resId = isDaytime ? R.drawable.gradient_snow_day : R.drawable.gradient_snow_night;
-        getView().setBackground(ContextCompat.getDrawable(requireContext(), resId));
+        int resId = WeatherIconUtils.getGradientResIdForIcon(iconUrl, isDaytime);
+        Drawable background = ContextCompat.getDrawable(requireContext(), resId);
+        if (background != null) {
+            background = background.mutate();
+        }
+
+        getView().setBackground(background);
+
+        if (getActivity() != null) {
+            View rootView = getActivity().findViewById(R.id.drawer_layout);
+            if (rootView != null) {
+                rootView.setBackground(background != null ? background.getConstantState().newDrawable(getResources()) : null);
+            }
+
+            View toolbar = getActivity().findViewById(R.id.toolbar);
+            if (toolbar != null) {
+                toolbar.setBackground(null);
+                toolbar.setBackgroundColor(Color.TRANSPARENT);
+            }
+        }
+    }
+
+    @Override
+    public void onDestroyView() {
+        if (getActivity() instanceof MainActivity) {
+            ((MainActivity) getActivity()).resetWeatherUi();
+        }
+        super.onDestroyView();
     }
 
     @Override public void onPause() { super.onPause(); if (forecastAdView != null) forecastAdView.pause(); }

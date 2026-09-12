@@ -18,8 +18,9 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            android:background="@color/md_theme_surface"
+            android:background="@android:color/transparent"
             android:elevation="0dp"
+            android:theme="@style/AppTheme.AppBarOverlay"
             app:navigationIconTint="?attr/colorOnSurface"
             app:titleTextColor="?attr/colorOnSurface" />
 

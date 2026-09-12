@@ -2,9 +2,12 @@
 <resources>
     <color name="chart_low">#90CAF9</color>
     <color name="chart_high">#FF8A80</color>
-    <color name="chart_bar">#64B5F6</color>
+    <color name="chart_bar">#99F6B564</color>
+    <color name="chart_prec">#64B5F6</color>
+    <color name="chart_precgrad">#9964B5F6</color>
+    <color name="chart_precamt">#049645</color>
 
-    <color name="df_low">#435fff</color>
+    <color name="df_low">#83afff</color>
     <color name="df_high">#cc2121</color>
 
     <color name="statusbarcolor">#222222</color>

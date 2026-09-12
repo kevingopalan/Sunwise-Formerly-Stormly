@@ -2,8 +2,10 @@ package com.venomdevelopment.sunwise;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.view.MenuItem;
+import android.view.View;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
@@ -67,6 +69,8 @@ public class MainActivity extends AppCompatActivity
         // Setup toolbar
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+        toolbar.setElevation(0f);
+        toolbar.setBackgroundColor(Color.TRANSPARENT);
 
         // Setup navigation drawer
         drawerLayout = findViewById(R.id.drawer_layout);
@@ -202,7 +206,20 @@ public class MainActivity extends AppCompatActivity
         return true;
     }
 
+    public void resetWeatherUi() {
+        MaterialToolbar toolbar = findViewById(R.id.toolbar);
+        if (toolbar != null) {
+            toolbar.setBackgroundColor(Color.TRANSPARENT);
+            toolbar.setElevation(0f);
+        }
+
+        if (drawerLayout != null) {
+            drawerLayout.setBackgroundColor(ContextCompat.getColor(this, R.color.md_theme_surface));
+        }
+    }
+
     private void replaceFragment(Fragment fragment, String tag) {
+        resetWeatherUi();
         fragmentManager.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE);
         FragmentTransaction transaction = fragmentManager.beginTransaction();
         transaction.replace(R.id.fragment_container, fragment, tag);
