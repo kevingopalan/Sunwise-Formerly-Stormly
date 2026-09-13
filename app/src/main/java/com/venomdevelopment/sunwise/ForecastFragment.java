@@ -68,6 +68,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.Date;
@@ -189,7 +190,7 @@ public class ForecastFragment extends Fragment {
             if (loc.isEmpty() || loc.equals("Location")) {
                 loc = sunwisePrefs.getString("address", "");
             }
-            
+
             if (!loc.isEmpty()) {
                 startWeatherLoad(loc);
             }
@@ -278,6 +279,7 @@ public class ForecastFragment extends Fragment {
     }
 
     private void fetchWeatherData(String pointsUrl) {
+        Log.d(TAG, "fetchWeatherData: " + pointsUrl);
         JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, pointsUrl, null, response -> {
             try {
                 JSONObject props = response.getJSONObject("properties");
@@ -323,15 +325,21 @@ public class ForecastFragment extends Fragment {
             if (!isAdded()) return;
             try {
                 JSONObject props = response.getJSONObject("properties");
+
                 JSONArray qpfValues = new JSONArray();
                 if (props.has("quantitativePrecipitation")) {
                     qpfValues = props.getJSONObject("quantitativePrecipitation").getJSONArray("values");
                 }
-                updateHourlyUI(hourlyPeriods, qpfValues);
+
+                JSONArray snowValues = new JSONArray();
+                if (props.has("snowfallAmount")) {
+                    snowValues = props.getJSONObject("snowfallAmount").getJSONArray("values");
+                }
+
+                updateHourlyUI(hourlyPeriods, qpfValues, snowValues);
             } catch (JSONException e) { e.printStackTrace(); }
         }, err -> {
-            // Fallback to updating UI without grid data if grid call fails
-            try { updateHourlyUI(hourlyPeriods, new JSONArray()); } catch (JSONException e) { e.printStackTrace(); }
+            try { updateHourlyUI(hourlyPeriods, new JSONArray(), new JSONArray()); } catch (JSONException e) { e.printStackTrace(); }
         }) {
             @Override
             public Map<String, String> getHeaders() {
@@ -428,7 +436,19 @@ public class ForecastFragment extends Fragment {
             }
         }
 
-        dailyRecyclerView.setAdapter(new DailyForecastAdapter(getContext(), items, times, icons, precips, hums, lotties, descs, isDaytimes));
+        DailyForecastAdapter dailyAdapter = new DailyForecastAdapter(getContext(), items, times, icons, precips, hums, lotties, descs, isDaytimes);
+        dailyAdapter.setOnItemExpandListener(new DailyForecastAdapter.OnItemExpandListener() {
+            @Override
+            public void onItemExpanded(int position) {
+                scrollRecyclerViewToAlignEnd(dailyRecyclerView, position);
+            }
+
+            @Override
+            public void onItemContracted(int position) {
+                // no-op: only expand behavior is adjusted
+            }
+        });
+        dailyRecyclerView.setAdapter(dailyAdapter);
         hideLoading();
     }
 
@@ -439,17 +459,17 @@ public class ForecastFragment extends Fragment {
         double valuePerHour;
     }
 
-    private void updateHourlyUI(JSONArray periods, JSONArray qpfValues) throws JSONException {
+    private void updateHourlyUI(JSONArray periods, JSONArray qpfValues, JSONArray snowValues) throws JSONException {
         if (periods.length() == 0) return;
         JSONObject current = periods.getJSONObject(0);
         weatherViewModel.setCurrentTemperature(formatTemperature(current.getDouble("temperature"), tempUnit));
         weatherViewModel.setDescription(current.getString("shortForecast"));
         weatherViewModel.setWind(formatWind(current.getString("windSpeed"), current.optString("windDirection"), windUnit));
-        
+
         int precip = current.getJSONObject("probabilityOfPrecipitation").optInt("value", 0);
         weatherViewModel.setPrecipitation(precip + "%");
         weatherViewModel.setPrecipitationInt(precip);
-        
+
         int hum = current.has("relativeHumidity") ? current.getJSONObject("relativeHumidity").optInt("value") : 0;
         weatherViewModel.setHumidity(hum + "%");
         weatherViewModel.setHumidityInt(hum);
@@ -470,6 +490,7 @@ public class ForecastFragment extends Fragment {
         ArrayList<Boolean> isDaytimes = new ArrayList<>();
 
         DateTimeFormatter outFmt = use24HourFormat ? DateTimeFormatter.ofPattern("HH:00") : DateTimeFormatter.ofPattern("h:00 a");
+
         List<QpfBlock> qpfBlocks = new ArrayList<>();
         if (qpfValues != null) {
             for (int i = 0; i < qpfValues.length(); i++) {
@@ -487,14 +508,38 @@ public class ForecastFragment extends Fragment {
                         QpfBlock block = new QpfBlock();
                         block.start = start;
                         block.end = end;
-                        // Distribute total mm across the hours in the block
                         block.valuePerHour = totalVal / hours;
                         qpfBlocks.add(block);
                     }
                 } catch (Exception ignored) {}
             }
         }
-        for (int i = 0; i < Math.min(periods.length(), 48); i++) {
+
+        List<QpfBlock> snowBlocks = new ArrayList<>();
+        if (snowValues != null) {
+            for (int i = 0; i < snowValues.length(); i++) {
+                try {
+                    JSONObject valObj = snowValues.getJSONObject(i);
+                    String[] parts = valObj.getString("validTime").split("/");
+                    if (parts.length == 2) {
+                        OffsetDateTime start = OffsetDateTime.parse(parts[0]);
+                        long hours = Duration.parse(parts[1]).toHours();
+                        if (hours <= 0) hours = 1;
+
+                        OffsetDateTime end = start.plusHours(hours);
+                        double totalVal = valObj.optDouble("value", 0.0);
+
+                        QpfBlock block = new QpfBlock();
+                        block.start = start;
+                        block.end = end;
+                        block.valuePerHour = totalVal / hours;
+                        snowBlocks.add(block);
+                    }
+                } catch (Exception ignored) {}
+            }
+        }
+
+        for (int i = 0; i < periods.length(); i++) {
             JSONObject p = periods.getJSONObject(i);
             double val = p.getDouble("temperature");
             temps.add(formatTemperature(val, tempUnit));
@@ -507,23 +552,21 @@ public class ForecastFragment extends Fragment {
             lotties.add(p.getString("icon"));
             descs.add(p.getString("shortForecast"));
             isDaytimes.add(p.getBoolean("isDaytime"));
-
         }
+
         boolean isUsUnits = "us".equals(tempUnit);
         if (customHourlyChart != null) {
             customHourlyChart.setUseUsUnits(isUsUnits);
         }
 
-        // Build points for your Custom Beta Chart
         List<WeatherHourlyChart.WeatherPoint> customPoints = new ArrayList<>();
-        for (int i = 0; i < Math.min(periods.length(), 24); i++) {
+        for (int i = 0; i < periods.length(); i++) {
             JSONObject p = periods.getJSONObject(i);
             int val = (int) Math.round(convertTemperatureForGraph(p.getDouble("temperature"), tempUnit));
             int precipChance = p.getJSONObject("probabilityOfPrecipitation").optInt("value", 0);
 
             OffsetDateTime periodStart = OffsetDateTime.parse(p.getString("startTime"));
 
-            // Find if this hour falls inside a precipitation block
             double hourlyPrecipMm = 0.0;
             for (QpfBlock block : qpfBlocks) {
                 if (!periodStart.isBefore(block.start) && periodStart.isBefore(block.end)) {
@@ -532,10 +575,25 @@ public class ForecastFragment extends Fragment {
                 }
             }
 
+            double hourlySnowMm = 0.0;
+            for (QpfBlock block : snowBlocks) {
+                if (!periodStart.isBefore(block.start) && periodStart.isBefore(block.end)) {
+                    hourlySnowMm = block.valuePerHour;
+                    break;
+                }
+            }
+
             double precipAmount = isUsUnits ? (hourlyPrecipMm / 25.4) : hourlyPrecipMm;
+            double snowAmount = isUsUnits ? (hourlySnowMm / 25.4) : hourlySnowMm;
 
             LocalDateTime startTimeLocal = periodStart.toLocalDateTime();
             String timeLabel = (i == 0) ? "Now" : startTimeLocal.format(outFmt);
+
+            // Compute short date (e.g. Sep 23) if the period is not today
+            String dateLabel = null;
+            if (!startTimeLocal.toLocalDate().equals(LocalDate.now())) {
+                dateLabel = startTimeLocal.format(DateTimeFormatter.ofPattern("MMM d", Locale.getDefault()));
+            }
 
             String iconUrl = p.getString("icon");
             String animName = WeatherIconUtils.getAnimationResourceName(iconUrl, p.getBoolean("isDaytime"));
@@ -550,13 +608,60 @@ public class ForecastFragment extends Fragment {
                 });
             }
 
-            customPoints.add(new WeatherHourlyChart.WeatherPoint(timeLabel, val, precipChance, precipAmount, lottieDrawable));
+            customPoints.add(new WeatherHourlyChart.WeatherPoint(timeLabel, dateLabel, val, precipChance, precipAmount, snowAmount, lottieDrawable));
         }
 
         if (customHourlyChart != null) {
             customHourlyChart.setPoints(customPoints);
         }
-        horizontalHourlyRecyclerView.setAdapter(new HorizontalHourlyForecastAdapter(getContext(), temps, times, icons, precips, hums, lotties, descs, isDaytimes));
+
+        HorizontalHourlyForecastAdapter hourlyAdapter = new HorizontalHourlyForecastAdapter(getContext(), temps, times, icons, precips, hums, lotties, descs, isDaytimes);
+        hourlyAdapter.setOnItemExpandListener(new HorizontalHourlyForecastAdapter.OnItemExpandListener() {
+            @Override
+            public void onItemExpanded(int position) {
+                scrollRecyclerViewToAlignEnd(horizontalHourlyRecyclerView, position);
+            }
+
+            @Override
+            public void onItemContracted(int position) {
+                // no-op: only expand behavior is adjusted
+            }
+        });
+        horizontalHourlyRecyclerView.setAdapter(hourlyAdapter);
+    }
+
+    private void scrollRecyclerViewToAlignEnd(RecyclerView recyclerView, int position) {
+        if (recyclerView == null || recyclerView.getLayoutManager() == null) return;
+
+        recyclerView.post(() -> {
+            RecyclerView.LayoutManager layoutManager = recyclerView.getLayoutManager();
+            View itemView = layoutManager.findViewByPosition(position);
+            if (itemView == null) {
+                recyclerView.scrollToPosition(position);
+                recyclerView.post(() -> scrollRecyclerViewToAlignEnd(recyclerView, position));
+                return;
+            }
+
+            int containerSize;
+            int itemSize;
+            if (layoutManager instanceof LinearLayoutManager
+                    && ((LinearLayoutManager) layoutManager).getOrientation() == LinearLayoutManager.HORIZONTAL) {
+                containerSize = recyclerView.getWidth();
+                itemSize = itemView.getWidth();
+            } else {
+                containerSize = recyclerView.getHeight();
+                itemSize = itemView.getHeight();
+            }
+
+            if (containerSize <= 0 || itemSize <= 0) return;
+
+            int offset = containerSize - itemSize;
+            if (offset > 0) {
+                if (layoutManager instanceof LinearLayoutManager) {
+                    ((LinearLayoutManager) layoutManager).scrollToPositionWithOffset(position, offset);
+                }
+            }
+        });
     }
 
     private void setupDailyChart(ArrayList<Float> days, ArrayList<Float> nights) {
@@ -680,17 +785,17 @@ public class ForecastFragment extends Fragment {
 
     private String formatWind(String speedStr, String direction, String unit) {
         if (speedStr == null || speedStr.isEmpty()) return "--";
-        
+
         double speedVal;
         try {
             speedVal = Double.parseDouble(speedStr.replaceAll("[^\\d.]", ""));
         } catch (Exception e) {
             return speedStr;
         }
-        
+
         double displaySpeed = speedVal;
         String unitDisplay = unit;
-        
+
         switch (unit) {
             case "kmh":
                 displaySpeed = speedVal * 1.60934;
@@ -706,7 +811,7 @@ public class ForecastFragment extends Fragment {
                 unitDisplay = "mph";
                 break;
         }
-        
+
         String result = Math.round(displaySpeed) + " " + unitDisplay;
         if (direction != null && !direction.isEmpty()) {
             result += " " + direction;
@@ -828,7 +933,7 @@ public class ForecastFragment extends Fragment {
                         for (int k = 0; k < vals.length; k++) {
                             float x = (buffer.buffer[bufferIndex] + buffer.buffer[bufferIndex + 2]) / 2f;
                             float y = buffer.buffer[bufferIndex + 1];
-                            
+
                             if (!mViewPortHandler.isInBoundsRight(x)) break;
                             if (!mViewPortHandler.isInBoundsLeft(x)) {
                                 bufferIndex += 4;

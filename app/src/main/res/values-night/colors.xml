@@ -6,6 +6,7 @@
     <color name="chart_prec">#64B5F6</color>
     <color name="chart_precgrad">#9964B5F6</color>
     <color name="chart_precamt">#049645</color>
+    <color name="chart_snowamt">#044596</color>
 
     <color name="df_low">#83afff</color>
     <color name="df_high">#cc2121</color>

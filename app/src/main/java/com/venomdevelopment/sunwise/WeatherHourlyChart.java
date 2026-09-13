@@ -30,33 +30,50 @@ public class WeatherHourlyChart extends View {
     private final Paint precipLinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint timeTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint dateTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint precipTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
     private final Paint precipAmtBgPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint precipAmtTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint snowAmtBgPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint fadePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
     private Drawable gradientDrawable;
     private Drawable precipGradientDrawable;
+
+    // NEW: Drawables for the pills
+    private Drawable rainPillIcon;
+    private Drawable snowPillIcon;
+
     private final float widthPerItem = 180f;
     private final float horizontalOffset = 80f;
     private List<WeatherPoint> points = new ArrayList<>();
 
     private boolean useUsUnits = true;
+    private boolean hasRain = false;
+    private boolean hasSnow = false;
 
     public static class WeatherPoint {
         String time;
+        String date;
         int temp;
         int precipChance;
         double precipAmount;
+        double snowAmount;
         Drawable icon;
 
-        public WeatherPoint(String time, int temp, int precipChance, double precipAmount, Drawable icon) {
+        public WeatherPoint(String time, String date, int temp, int precipChance, double precipAmount, double snowAmount, Drawable icon) {
             this.time = time;
+            this.date = date;
             this.temp = temp;
             this.precipChance = precipChance;
             this.precipAmount = precipAmount;
+            this.snowAmount = snowAmount;
             this.icon = icon;
+        }
+
+        public WeatherPoint(String time, int temp, int precipChance, double precipAmount, double snowAmount, Drawable icon) {
+            this(time, null, temp, precipChance, precipAmount, snowAmount, icon);
         }
     }
 
@@ -67,11 +84,24 @@ public class WeatherHourlyChart extends View {
         int chartBarColor = ContextCompat.getColor(context, R.color.chart_bar);
         int chartPrecipColor = ContextCompat.getColor(context, R.color.chart_prec);
         int precAmtColor = ContextCompat.getColor(context, R.color.chart_precamt);
+        int snowAmtColor = ContextCompat.getColor(context, R.color.chart_snowamt);
 
         gradientDrawable = ContextCompat.getDrawable(context, R.drawable.linegraphgradient);
         precipGradientDrawable = ContextCompat.getDrawable(context, R.drawable.precgraphgradient);
 
+        // NEW: Load and tint pill icons
+        rainPillIcon = ContextCompat.getDrawable(context, R.drawable.humidityicon);
+        if (rainPillIcon != null) {
+            rainPillIcon.setColorFilter(Color.WHITE, PorterDuff.Mode.SRC_IN);
+        }
+
+        snowPillIcon = ContextCompat.getDrawable(context, R.drawable.baseline_ac_unit_24);
+        if (snowPillIcon != null) {
+            snowPillIcon.setColorFilter(Color.WHITE, PorterDuff.Mode.SRC_IN);
+        }
+
         Typeface montreg = ResourcesCompat.getFont(context, R.font.montreg);
+        Typeface montsemibold = ResourcesCompat.getFont(context, R.font.montsemibold);
 
         linePaint.setColor(chartBarColor);
         linePaint.setStrokeWidth(6f);
@@ -87,22 +117,30 @@ public class WeatherHourlyChart extends View {
         textPaint.setTypeface(montreg);
 
         timeTextPaint.setColor(onSurfaceColor);
-        timeTextPaint.setTextSize(32f);
+        timeTextPaint.setTextSize(34f);
         timeTextPaint.setTextAlign(Paint.Align.CENTER);
         timeTextPaint.setTypeface(montreg);
 
+        dateTextPaint.setColor(onSurfaceColor);
+        dateTextPaint.setTextSize(32f);
+        dateTextPaint.setTextAlign(Paint.Align.CENTER);
+        dateTextPaint.setTypeface(montsemibold);
+
         precipTextPaint.setColor(chartPrecipColor);
-        precipTextPaint.setTextSize(28f);
+        precipTextPaint.setTextSize(32f);
         precipTextPaint.setTextAlign(Paint.Align.CENTER);
-        precipTextPaint.setTypeface(montreg);
+        precipTextPaint.setTypeface(montsemibold);
 
         precipAmtBgPaint.setColor(precAmtColor);
         precipAmtBgPaint.setStyle(Paint.Style.FILL);
 
+        snowAmtBgPaint.setColor(snowAmtColor);
+        snowAmtBgPaint.setStyle(Paint.Style.FILL);
+
         precipAmtTextPaint.setColor(Color.WHITE);
         precipAmtTextPaint.setTextSize(30f);
         precipAmtTextPaint.setTextAlign(Paint.Align.CENTER);
-        precipAmtTextPaint.setTypeface(montreg);
+        precipAmtTextPaint.setTypeface(montsemibold);
 
         fadePaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_IN));
     }
@@ -117,10 +155,17 @@ public class WeatherHourlyChart extends View {
                 if (p.icon != null) p.icon.setCallback(null);
             }
         }
+
         this.points = points;
+        this.hasRain = false;
+        this.hasSnow = false;
+
         for (WeatherPoint p : this.points) {
+            if (p.precipAmount > 0.005) this.hasRain = true;
+            if (p.snowAmount > 0.005) this.hasSnow = true;
             if (p.icon != null) p.icon.setCallback(this);
         }
+
         requestLayout();
         invalidate();
     }
@@ -138,7 +183,12 @@ public class WeatherHourlyChart extends View {
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         int width = points != null ? (int) ((points.size() * widthPerItem) + (horizontalOffset * 2)) : MeasureSpec.getSize(widthMeasureSpec);
-        int height = MeasureSpec.getSize(heightMeasureSpec) + 40;
+
+        int extraHeight = 0;
+        if (hasRain) extraHeight += 50;
+        if (hasSnow) extraHeight += 50;
+
+        int height = MeasureSpec.getSize(heightMeasureSpec) + extraHeight;
         setMeasuredDimension(width, height);
     }
 
@@ -156,8 +206,13 @@ public class WeatherHourlyChart extends View {
 
         float tempRange = (maxTemp == minTemp) ? 1f : (maxTemp - minTemp);
         float actualWidth = getWidth();
-        float topPadding = 240f;
+
+        float topPadding = 270f;
+
         float bottomPadding = 20f;
+        if (hasRain) bottomPadding += 60f;
+        if (hasSnow) bottomPadding += 60f;
+
         float precipGraphHeight = 160f;
 
         float precip0PercentY = getHeight() - bottomPadding;
@@ -216,8 +271,6 @@ public class WeatherHourlyChart extends View {
 
         path.moveTo(xs[0], tYs[0]);
         fillPath.moveTo(xs[0], tYs[0]);
-
-        // Removed precipPath.moveTo() from here so it can be handled dynamically in the loop
         precipFillPath.moveTo(xs[0], pYs[0]);
 
         float tension = 0.2f;
@@ -244,17 +297,14 @@ public class WeatherHourlyChart extends View {
                     xs[next] - dx2, tYs[next] - dy2_t,
                     xs[next], tYs[next]);
 
-            // Clamp the precipitation Y values to ensure the curve never dips below the baseline
             float p_cp1y = Math.min(pYs[curr] + dy1_p, precip0PercentY);
             float p_cp2y = Math.min(pYs[next] - dy2_p, precip0PercentY);
             float p_endy = Math.min(pYs[next], precip0PercentY);
 
-            // Precip Fill Path must remain continuous to bound the gradient properly
             precipFillPath.cubicTo(xs[curr] + dx1, p_cp1y,
                     xs[next] - dx2, p_cp2y,
                     xs[next], p_endy);
 
-            // Only draw the precipitation stroke if the segment is actually above the 0% baseline
             boolean isZeroSegment = (pYs[curr] >= precip0PercentY - 0.5f) &&
                     (p_endy >= precip0PercentY - 0.5f) &&
                     (p_cp1y >= precip0PercentY - 0.5f) &&
@@ -333,7 +383,10 @@ public class WeatherHourlyChart extends View {
             float tempY = topPadding + (((maxTemp - p.temp) / tempRange) * graphHeight);
             float precipY = precip0PercentY - ((p.precipChance / 100f) * precipGraphHeight);
 
-            canvas.drawText(p.time, x, 60f, timeTextPaint);
+            if (p.date != null && !p.date.isEmpty()) {
+                canvas.drawText(p.date, x, 46f, dateTextPaint);
+            }
+            canvas.drawText(p.time, x, 84f, timeTextPaint);
 
             if (p.icon != null) {
                 int halfSize = 42;
@@ -348,42 +401,107 @@ public class WeatherHourlyChart extends View {
             }
         }
 
-        float pillYCenter = getHeight();
         float pillHeight = 52f;
-        float pillTop = pillYCenter - pillHeight / 2f;
-        float pillBottom = pillYCenter + pillHeight / 2f;
+        float currentPillY = getHeight() - 25f;
 
-        int j = 0;
-        while (j < points.size()) {
-            if (points.get(j).precipAmount > 0.005) {
-                int startIdx = j;
-                double sumAmount = 0;
+        if (hasSnow) {
+            float snowPillYCenter = currentPillY;
+            float snowPillTop = snowPillYCenter - pillHeight / 2f;
+            float snowPillBottom = snowPillYCenter + pillHeight / 2f;
+            currentPillY -= 60f;
 
-                while (j < points.size() && points.get(j).precipAmount > 0.005) {
-                    sumAmount += points.get(j).precipAmount;
+            int k = 0;
+            while (k < points.size()) {
+                if (points.get(k).snowAmount > 0.005) {
+                    int startIdx = k;
+                    double sumAmount = 0;
+
+                    while (k < points.size() && points.get(k).snowAmount > 0.005) {
+                        sumAmount += points.get(k).snowAmount;
+                        k++;
+                    }
+                    int endIdx = k - 1;
+
+                    float startX = (startIdx * widthPerItem) + firstXOffset;
+                    float endX = (endIdx * widthPerItem) + firstXOffset;
+
+                    float rectLeft = startX - 70f;
+                    float rectRight = endX + 70f;
+
+                    canvas.drawRoundRect(rectLeft, snowPillTop, rectRight, snowPillBottom, 26f, 26f, snowAmtBgPaint);
+
+                    // NEW: Draw Snow Icon
+                    if (snowPillIcon != null) {
+                        int iconSize = 36;
+                        int iconLeft = (int) (rectLeft + 20f);
+                        int iconTop = (int) (snowPillYCenter - iconSize / 2f);
+                        snowPillIcon.setBounds(iconLeft, iconTop, iconLeft + iconSize, iconTop + iconSize);
+                        snowPillIcon.draw(canvas);
+                    }
+
+                    String unitStr = useUsUnits ? "in" : "cm";
+                    double displayAmt = useUsUnits ? sumAmount : (sumAmount / 10.0);
+                    String amtStr = useUsUnits
+                            ? String.format(Locale.US, "%.2f %s", displayAmt, unitStr)
+                            : String.format(Locale.US, "%.1f %s", displayAmt, unitStr);
+
+                    float textX = (startX + endX) / 2f;
+                    float textY = snowPillYCenter - ((precipAmtTextPaint.descent() + precipAmtTextPaint.ascent()) / 2f);
+
+                    canvas.drawText(amtStr, textX, textY, precipAmtTextPaint);
+                } else {
+                    k++;
+                }
+            }
+        }
+
+        // 2. Draw Rain Pills
+        if (hasRain) {
+            float rainPillYCenter = currentPillY;
+            float rainPillTop = rainPillYCenter - pillHeight / 2f;
+            float rainPillBottom = rainPillYCenter + pillHeight / 2f;
+
+            int j = 0;
+            while (j < points.size()) {
+                if (points.get(j).precipAmount > 0.005) {
+                    int startIdx = j;
+                    double sumAmount = 0;
+
+                    while (j < points.size() && points.get(j).precipAmount > 0.005) {
+                        sumAmount += points.get(j).precipAmount;
+                        j++;
+                    }
+                    int endIdx = j - 1;
+
+                    float startX = (startIdx * widthPerItem) + firstXOffset;
+                    float endX = (endIdx * widthPerItem) + firstXOffset;
+
+                    float rectLeft = startX - 70f;
+                    float rectRight = endX + 70f;
+
+                    canvas.drawRoundRect(rectLeft, rainPillTop, rectRight, rainPillBottom, 26f, 26f, precipAmtBgPaint);
+
+                    // NEW: Draw Rain Icon
+                    if (rainPillIcon != null) {
+                        int iconSize = 36;
+                        int iconLeft = (int) (rectLeft + 20f);
+                        int iconTop = (int) (rainPillYCenter - iconSize / 2f);
+                        rainPillIcon.setBounds(iconLeft, iconTop, iconLeft + iconSize, iconTop + iconSize);
+                        rainPillIcon.draw(canvas);
+                    }
+
+                    String unitStr = useUsUnits ? "in" : "mm";
+                    String amtStr = useUsUnits
+                            ? String.format(Locale.US, "%.2f %s", sumAmount, unitStr)
+                            : String.format(Locale.US, "%.1f %s", sumAmount, unitStr);
+
+                    float textX = (startX + endX) / 2f;
+                    float textY = rainPillYCenter - ((precipAmtTextPaint.descent() + precipAmtTextPaint.ascent()) / 2f);
+
+                    canvas.drawText(amtStr, textX, textY, precipAmtTextPaint);
+                } else {
                     j++;
                 }
-                int endIdx = j - 1;
-
-                float startX = (startIdx * widthPerItem) + firstXOffset;
-                float endX = (endIdx * widthPerItem) + firstXOffset;
-
-                float rectLeft = startX - 70f;
-                float rectRight = endX + 70f;
-
-                canvas.drawRoundRect(rectLeft, pillTop, rectRight, pillBottom, 26f, 26f, precipAmtBgPaint);
-
-                String unitStr = useUsUnits ? "in" : "mm";
-                String amtStr = useUsUnits
-                        ? String.format(Locale.US, "%.2f %s", sumAmount, unitStr)
-                        : String.format(Locale.US, "%.1f %s", sumAmount, unitStr);
-
-                float textX = (startX + endX) / 2f;
-                float textY = pillYCenter - ((precipAmtTextPaint.descent() + precipAmtTextPaint.ascent()) / 2f);
-
-                canvas.drawText(amtStr, textX, textY, precipAmtTextPaint);
-            } else {
-                j++;
             }
         }
     }
