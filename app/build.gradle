@@ -11,7 +11,7 @@ android {
         applicationId "com.venomdevelopment.sunwise"
         minSdk 25
         targetSdk 36
-        versionCode 22
+        versionCode 23
         versionName "1.0-release"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -68,7 +68,6 @@ dependencies {
     //noinspection UseTomlInstead
     implementation "androidx.datastore:datastore-preferences-rxjava3:1.2.1"
 
-    implementation libs.mpandroidchart
     implementation libs.lottie
     implementation libs.preference
     implementation libs.legacy.support.v4

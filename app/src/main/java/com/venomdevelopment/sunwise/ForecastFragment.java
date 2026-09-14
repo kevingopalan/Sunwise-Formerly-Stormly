@@ -22,6 +22,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.LinearLayout;
 import android.widget.ImageView;
+import android.graphics.Rect;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -35,25 +36,6 @@ import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
-import com.github.mikephil.charting.buffer.BarBuffer;
-import com.github.mikephil.charting.charts.BarChart;
-import com.github.mikephil.charting.components.AxisBase;
-import com.github.mikephil.charting.data.BarData;
-import com.github.mikephil.charting.data.BarDataSet;
-import com.github.mikephil.charting.data.BarEntry;
-import com.github.mikephil.charting.components.XAxis;
-import com.github.mikephil.charting.components.YAxis;
-import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
-import com.github.mikephil.charting.formatter.ValueFormatter;
-import com.github.mikephil.charting.renderer.BarChartRenderer;
-import com.github.mikephil.charting.utils.Transformer;
-import com.github.mikephil.charting.interfaces.datasets.IBarDataSet;
-import com.github.mikephil.charting.animation.ChartAnimator;
-import com.github.mikephil.charting.utils.ViewPortHandler;
-import android.graphics.RectF;
-import android.graphics.Canvas;
-import android.graphics.Paint;
-import com.github.mikephil.charting.utils.Utils;
 import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.AdView;
 import com.google.android.gms.ads.LoadAdError;
@@ -92,7 +74,7 @@ public class ForecastFragment extends Fragment {
     private TextView currentTempTextForecast, highTempTextForecast, lowTempTextForecast, descTextForecast, humidityTextViewForecast, windTextViewForecast, precipitationTextViewForecast, dewpointTextViewForecast, locationDisplay;
     private Button saveLocationButton;
     private CircularProgressIndicator humidityProgress, precipitationProgress;
-    private RecyclerView dailyRecyclerView, horizontalHourlyRecyclerView;
+    private RecyclerView horizontalHourlyRecyclerView;
     private WeatherViewModel weatherViewModel;
     private LinearLayout progressBar;
     private String tempUnit = "us", windUnit = "mph";
@@ -101,8 +83,10 @@ public class ForecastFragment extends Fragment {
     private AdView forecastAdView;
     private final Handler reloadHandler = new Handler(Looper.getMainLooper());
     private FloatingActionButton reloadFab;
-    private BarChart dailyBarChart;
     private Boolean daytime = false;
+    private RecyclerView customDailyBarBeta;
+    private Float liveCurrentTemp = null;
+    private VerticalBarForecastAdapter verticalDailyAdapter;
 
     @Nullable
     @Override
@@ -143,29 +127,14 @@ public class ForecastFragment extends Fragment {
         humidityProgress = view.findViewById(R.id.humidityProgress);
         precipitationProgress = view.findViewById(R.id.precipitationProgress);
         locationDisplay = view.findViewById(R.id.locationDisplay);
-        dailyRecyclerView = view.findViewById(R.id.dailyRecyclerView);
         horizontalHourlyRecyclerView = view.findViewById(R.id.hourlyRecyclerView);
         progressBar = view.findViewById(R.id.progressBar);
         forecastAdView = view.findViewById(R.id.forecast_ad);
         reloadFab = view.findViewById(R.id.reloadFab);
-        dailyBarChart = view.findViewById(R.id.dailyBarGraph);
-        dailyRecyclerView.setClipToOutline(true);
-        dailyRecyclerView.setOutlineProvider(ViewOutlineProvider.BACKGROUND);
+        customDailyBarBeta = view.findViewById(R.id.dailygraphbeta);
         customHourlyChart = view.findViewById(R.id.customHourlyChart);
-        initCharts();
-    }
-
-    private void initCharts() {
-        if (dailyBarChart != null) {
-            dailyBarChart.setDrawBarShadow(false);
-            dailyBarChart.setDrawValueAboveBar(true);
-            dailyBarChart.getDescription().setEnabled(false);
-            dailyBarChart.setDrawGridBackground(false);
-            dailyBarChart.setPinchZoom(false);
-            dailyBarChart.setScaleEnabled(false);
-            dailyBarChart.getLegend().setEnabled(false);
-            dailyBarChart.setTouchEnabled(true);
-        }
+        customDailyBarBeta.setClipToOutline(true);
+        customDailyBarBeta.setOutlineProvider(ViewOutlineProvider.BACKGROUND);
     }
 
     private void loadPreferences() {
@@ -175,8 +144,8 @@ public class ForecastFragment extends Fragment {
     }
 
     private void setupRecyclerViews() {
-        dailyRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         horizontalHourlyRecyclerView.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
+        customDailyBarBeta.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false));
     }
 
     private void setupAd() {
@@ -372,8 +341,17 @@ public class ForecastFragment extends Fragment {
     }
 
     private void updateDailyUI(JSONArray periods) throws JSONException {
-        ArrayList<Float> dayTemps = new ArrayList<>();
-        ArrayList<Float> nightTemps = new ArrayList<>();
+        ArrayList<Float> highTemps = new ArrayList<>();
+        ArrayList<Float> lowTemps = new ArrayList<>();
+        ArrayList<String> times = new ArrayList<>();
+        ArrayList<String> icons = new ArrayList<>();
+        ArrayList<String> precips = new ArrayList<>();
+        ArrayList<String> hums = new ArrayList<>();
+        ArrayList<String> descs = new ArrayList<>();
+        ArrayList<String> nightDescs = new ArrayList<>();
+        ArrayList<String> nightPrecs = new ArrayList<>();
+        ArrayList<String> nightHums = new ArrayList<>();
+        ArrayList<Boolean> isDaytimes = new ArrayList<>();
 
         int i = 0;
         while (i < periods.length()) {
@@ -383,72 +361,86 @@ public class ForecastFragment extends Fragment {
 
             if (i == 0) {
                 daytime = isCurrentDay;
+                if (periods.length() >= 2) {
+                    if (daytime) {
+                        weatherViewModel.setHighTemperature(formatTemperature(currentPeriod.getDouble("temperature"), tempUnit));
+                        weatherViewModel.setLowTemperature(formatTemperature(periods.getJSONObject(1).getDouble("temperature"), tempUnit));
+                    } else {
+                        weatherViewModel.setLowTemperature(formatTemperature(currentPeriod.getDouble("temperature"), tempUnit));
+                        weatherViewModel.setHighTemperature("--");
+                    }
+                }
             }
+            LocalDateTime startTime = LocalDateTime.parse(currentPeriod.getString("startTime"), DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+            if (startTime.toLocalDate().equals(LocalDate.now())) {
+                if(isCurrentDay) {
+                    times.add("Today");
+                } else {
+                    times.add("Tonight");
+                }
+            } else {
+                times.add(startTime.format(DateTimeFormatter.ofPattern("EEE")));
+            }
+            icons.add(currentPeriod.getString("icon"));
+            precips.add(currentPeriod.getJSONObject("probabilityOfPrecipitation").optInt("value", 0) + "%");
+            hums.add(currentPeriod.has("relativeHumidity") ? currentPeriod.getJSONObject("relativeHumidity").optInt("value") + "%" : "N/A");
 
             if (isCurrentDay) {
-                dayTemps.add(currentTemp);
+                descs.add(currentPeriod.getString("shortForecast"));
+            } else {
+                descs.add("---");
+            }
+
+            nightDescs.add("---");
+            nightPrecs.add("--%");
+            nightHums.add("N/A");
+            isDaytimes.add(isCurrentDay);
+
+            // Group High and Low pairs
+            if (isCurrentDay) {
+                highTemps.add(currentTemp);
                 if (i + 1 < periods.length() && !periods.getJSONObject(i + 1).getBoolean("isDaytime")) {
-                    float nightTemp = (float) convertTemperatureForGraph(periods.getJSONObject(i + 1).getDouble("temperature"), tempUnit);
-                    nightTemps.add(nightTemp);
+                    JSONObject nightPeriod = periods.getJSONObject(i + 1);
+                    float nightTemp = (float) convertTemperatureForGraph(nightPeriod.getDouble("temperature"), tempUnit);
+                    lowTemps.add(nightTemp);
+                    nightDescs.set(nightDescs.size() - 1, nightPeriod.getString("shortForecast"));
+                    nightPrecs.set(nightPrecs.size() - 1, nightPeriod.getJSONObject("probabilityOfPrecipitation").optInt("value", 0) + "%");
+                    nightHums.set(nightHums.size() - 1, nightPeriod.has("relativeHumidity") ? nightPeriod.getJSONObject("relativeHumidity").optInt("value") + "%" : "N/A");
                     i += 2;
                 } else {
-                    nightTemps.add(Float.NaN);
+                    lowTemps.add(Float.NaN);
                     i += 1;
                 }
             } else {
-                dayTemps.add(Float.NaN);
-                nightTemps.add(currentTemp);
+                highTemps.add(Float.NaN);
+                lowTemps.add(currentTemp);
+                nightDescs.set(nightDescs.size() - 1, currentPeriod.getString("shortForecast"));
+                nightPrecs.set(nightPrecs.size() - 1, currentPeriod.getJSONObject("probabilityOfPrecipitation").optInt("value", 0) + "%");
+                nightHums.set(nightHums.size() - 1, currentPeriod.has("relativeHumidity") ? currentPeriod.getJSONObject("relativeHumidity").optInt("value") + "%" : "N/A");
+                precips.set(precips.size() - 1, "--%");
+                hums.set(hums.size() - 1, "N/A");
                 i += 1;
             }
         }
+        verticalDailyAdapter = new VerticalBarForecastAdapter(
+                getContext(), highTemps, lowTemps, times, icons, precips, hums, descs,
+                nightDescs, nightPrecs, nightHums, isDaytimes, liveCurrentTemp
+        );
 
-        setupDailyChart(dayTemps, nightTemps);
-
-        ArrayList<SpannableString> items = new ArrayList<>();
-        ArrayList<String> times = new ArrayList<>(), icons = new ArrayList<>(), precips = new ArrayList<>(), hums = new ArrayList<>(), lotties = new ArrayList<>(), descs = new ArrayList<>();
-        ArrayList<Boolean> isDaytimes = new ArrayList<>();
-
-        for (int j = 0; j < periods.length(); j++) {
-            JSONObject p = periods.getJSONObject(j);
-            String name = p.getString("name");
-            String temp = formatTemperature(p.getDouble("temperature"), tempUnit);
-            SpannableString ss = new SpannableString(temp);
-            int color = ContextCompat.getColor(requireContext(), p.getBoolean("isDaytime") ? R.color.df_high : R.color.df_low);
-            ss.setSpan(new ForegroundColorSpan(color), 0, temp.length(), 0);
-
-            items.add(ss);
-            times.add(name.replace("This", "").trim());
-            icons.add(p.getString("icon"));
-            precips.add(p.getJSONObject("probabilityOfPrecipitation").optInt("value", 0) + "%");
-            hums.add(p.has("relativeHumidity") ? p.getJSONObject("relativeHumidity").optInt("value") + "%" : "N/A");
-            lotties.add(p.getString("icon"));
-            descs.add(p.getString("shortForecast"));
-            isDaytimes.add(p.getBoolean("isDaytime"));
-        }
-
-        if (periods.length() >= 2) {
-            if (daytime) {
-                weatherViewModel.setHighTemperature(formatTemperature(periods.getJSONObject(0).getDouble("temperature"), tempUnit));
-                weatherViewModel.setLowTemperature(formatTemperature(periods.getJSONObject(1).getDouble("temperature"), tempUnit));
-            } else {
-                weatherViewModel.setLowTemperature(formatTemperature(periods.getJSONObject(0).getDouble("temperature"), tempUnit));
-                weatherViewModel.setHighTemperature("--");
-            }
-        }
-
-        DailyForecastAdapter dailyAdapter = new DailyForecastAdapter(getContext(), items, times, icons, precips, hums, lotties, descs, isDaytimes);
-        dailyAdapter.setOnItemExpandListener(new DailyForecastAdapter.OnItemExpandListener() {
+        verticalDailyAdapter.setOnItemExpandListener(new VerticalBarForecastAdapter.OnItemExpandListener() {
             @Override
             public void onItemExpanded(int position) {
-                scrollRecyclerViewToAlignEnd(dailyRecyclerView, position);
+                scrollRecyclerViewToAlignEnd(customDailyBarBeta, position);
             }
 
             @Override
-            public void onItemContracted(int position) {
-                // no-op: only expand behavior is adjusted
-            }
+            public void onItemContracted(int position) {}
         });
-        dailyRecyclerView.setAdapter(dailyAdapter);
+
+        if (customDailyBarBeta != null) {
+            customDailyBarBeta.setAdapter(verticalDailyAdapter);
+        }
+
         hideLoading();
     }
 
@@ -462,6 +454,11 @@ public class ForecastFragment extends Fragment {
     private void updateHourlyUI(JSONArray periods, JSONArray qpfValues, JSONArray snowValues) throws JSONException {
         if (periods.length() == 0) return;
         JSONObject current = periods.getJSONObject(0);
+        liveCurrentTemp = (float) convertTemperatureForGraph(current.getDouble("temperature"), tempUnit);
+
+        if (verticalDailyAdapter != null) {
+            verticalDailyAdapter.setCurrentTemp(liveCurrentTemp);
+        }
         weatherViewModel.setCurrentTemperature(formatTemperature(current.getDouble("temperature"), tempUnit));
         weatherViewModel.setDescription(current.getString("shortForecast"));
         weatherViewModel.setWind(formatWind(current.getString("windSpeed"), current.optString("windDirection"), windUnit));
@@ -592,7 +589,7 @@ public class ForecastFragment extends Fragment {
             // Compute short date (e.g. Sep 23) if the period is not today
             String dateLabel = null;
             if (!startTimeLocal.toLocalDate().equals(LocalDate.now())) {
-                dateLabel = startTimeLocal.format(DateTimeFormatter.ofPattern("MMM d", Locale.getDefault()));
+                dateLabel = startTimeLocal.format(DateTimeFormatter.ofPattern("MMM d", Locale.ENGLISH));
             }
 
             String iconUrl = p.getString("icon");
@@ -664,92 +661,6 @@ public class ForecastFragment extends Fragment {
         });
     }
 
-    private void setupDailyChart(ArrayList<Float> days, ArrayList<Float> nights) {
-        if (dailyBarChart == null) return;
-        int colorOnSurface = getThemeColor(com.google.android.material.R.attr.colorOnSurface);
-        Typeface tf = ResourcesCompat.getFont(requireContext(), R.font.montsemibold);
-
-        ArrayList<BarEntry> entries = new ArrayList<>();
-        ArrayList<String> labels = new ArrayList<>();
-
-        for (int i = 0; i < days.size(); i++) {
-            if (i >= nights.size()) break;
-
-            Float dayVal = days.get(i);
-            Float nightVal = nights.get(i);
-
-            if (dayVal.isNaN() && !nightVal.isNaN()) {
-                entries.add(new BarEntry(i, nightVal));
-            } else if (!dayVal.isNaN() && nightVal.isNaN()) {
-                entries.add(new BarEntry(i, dayVal));
-            } else {
-                float low = Math.min(dayVal, nightVal);
-                float high = Math.max(dayVal, nightVal);
-                entries.add(new BarEntry(i, new float[]{low, high - low}));
-            }
-
-            labels.add(LocalDate.now().plusDays(i).format(DateTimeFormatter.ofPattern("EEE")));
-        }
-
-        BarDataSet ds = new BarDataSet(entries, "Daily");
-        ds.setColors(new int[]{
-                ContextCompat.getColor(requireContext(), R.color.chart_low),
-                ContextCompat.getColor(requireContext(), R.color.chart_high)
-        });
-
-        ds.setDrawValues(true);
-        ds.setValueTextColor(colorOnSurface);
-        ds.setValueTypeface(tf);
-        ds.setValueTextSize(14f);
-
-        ds.setValueFormatter(new ValueFormatter() {
-            @Override
-            public String getBarLabel(BarEntry entry) {
-                return Math.round(entry.getY()) + "°";
-            }
-
-            @Override
-            public String getBarStackedLabel(float value, BarEntry entry) {
-                float[] vals = entry.getYVals();
-                if (vals == null) return "";
-
-                if (value == vals[0]) {
-                    return Math.round(vals[0]) + "°";
-                }
-                if (value == vals[vals.length - 1]) {
-                    return Math.round(entry.getY()) + "°";
-                }
-                return "";
-            }
-        });
-
-        dailyBarChart.setRenderer(new RoundedBarChartRenderer(dailyBarChart, dailyBarChart.getAnimator(), dailyBarChart.getViewPortHandler(), Utils.convertDpToPixel(8f)));
-        BarData data = new BarData(ds);
-        data.setBarWidth(0.8f);
-        dailyBarChart.setData(data);
-        dailyBarChart.setExtraBottomOffset(15f);
-
-        XAxis x = dailyBarChart.getXAxis();
-        x.setValueFormatter(new IndexAxisValueFormatter(labels));
-        x.setPosition(XAxis.XAxisPosition.BOTTOM);
-        x.setGranularity(1f);
-        x.setDrawGridLines(false);
-        x.setTextColor(colorOnSurface);
-        x.setTypeface(tf);
-        x.setTextSize(14f);
-        x.setYOffset(5f);
-
-        YAxis y = dailyBarChart.getAxisLeft();
-        y.setDrawGridLines(false);
-        y.setTextColor(colorOnSurface);
-        y.setTypeface(tf);
-        y.setTextSize(14f);
-        y.setSpaceTop(25f);
-
-        dailyBarChart.getAxisRight().setEnabled(false);
-        dailyBarChart.invalidate();
-    }
-
     private void updateLottieAnimation(String iconUrl, boolean isDaytime) {
         if (animationViewForecast == null) return;
         String name = WeatherIconUtils.getAnimationResourceName(iconUrl, isDaytime);
@@ -758,14 +669,6 @@ public class ForecastFragment extends Fragment {
             animationViewForecast.setAnimation(resId);
             animationViewForecast.playAnimation();
         }
-    }
-
-    private int getThemeColor(int attr) {
-        TypedValue typedValue = new TypedValue();
-        if (getContext() != null && getContext().getTheme().resolveAttribute(attr, typedValue, true)) {
-            return typedValue.data;
-        }
-        return Color.BLACK;
     }
 
     private double convertTemperatureForGraph(double temp, String unit) {
@@ -878,125 +781,4 @@ public class ForecastFragment extends Fragment {
     @Override public void onPause() { super.onPause(); if (forecastAdView != null) forecastAdView.pause(); }
     @Override public void onResume() { super.onResume(); if (forecastAdView != null) forecastAdView.resume(); }
     @Override public void onDestroy() { super.onDestroy(); if (forecastAdView != null) forecastAdView.destroy(); }
-
-    public static class RoundedBarChartRenderer extends BarChartRenderer {
-        private final float mRadius;
-
-        public RoundedBarChartRenderer(BarChart chart, ChartAnimator animator, ViewPortHandler vph, float radiusPx) {
-            super(chart, animator, vph);
-            this.mRadius = radiusPx;
-        }
-
-        @Override
-        public void drawValues(Canvas c) {
-            if (mChart.getBarData() == null) return;
-            if (mBarBuffers == null || mBarBuffers.length != mChart.getBarData().getDataSetCount()) {
-                initBuffers();
-            }
-
-            BarData barData = mChart.getBarData();
-            List<IBarDataSet> dataSets = barData.getDataSets();
-            float valueOffset = Utils.convertDpToPixel(5f);
-
-            for (int i = 0; i < dataSets.size(); i++) {
-                IBarDataSet dataSet = dataSets.get(i);
-                if (!shouldDrawValues(dataSet)) continue;
-
-                applyValueTextStyle(dataSet);
-                BarBuffer buffer = mBarBuffers[i];
-                buffer.setPhases(mAnimator.getPhaseX(), mAnimator.getPhaseY());
-                buffer.setBarWidth(barData.getBarWidth());
-                buffer.setInverted(mChart.isInverted(dataSet.getAxisDependency()));
-                buffer.feed(dataSet);
-                mChart.getTransformer(dataSet.getAxisDependency()).pointValuesToPixel(buffer.buffer);
-
-                ValueFormatter formatter = dataSet.getValueFormatter();
-                int bufferIndex = 0;
-
-                for (int j = 0; j < dataSet.getEntryCount(); j++) {
-                    BarEntry entry = (BarEntry) dataSet.getEntryForIndex(j);
-                    float[] vals = entry.getYVals();
-
-                    if (vals == null) {
-                        float x = (buffer.buffer[bufferIndex] + buffer.buffer[bufferIndex + 2]) / 2f;
-                        if (!mViewPortHandler.isInBoundsRight(x)) break;
-                        if (!mViewPortHandler.isInBoundsLeft(x)) {
-                            bufferIndex += 4;
-                            continue;
-                        }
-
-                        float y = buffer.buffer[bufferIndex + 1];
-                        String valText = formatter.getBarLabel(entry);
-                        drawValue(c, valText, x, y - valueOffset, dataSet.getValueTextColor(j));
-                        bufferIndex += 4;
-                    } else {
-                        for (int k = 0; k < vals.length; k++) {
-                            float x = (buffer.buffer[bufferIndex] + buffer.buffer[bufferIndex + 2]) / 2f;
-                            float y = buffer.buffer[bufferIndex + 1];
-
-                            if (!mViewPortHandler.isInBoundsRight(x)) break;
-                            if (!mViewPortHandler.isInBoundsLeft(x)) {
-                                bufferIndex += 4;
-                                continue;
-                            }
-
-                            String valText = formatter.getBarStackedLabel(vals[k], entry);
-                            if (valText != null && !valText.isEmpty()) {
-                                float yPos;
-                                if (k == 0) {
-                                    yPos = y + Utils.convertDpToPixel(20f);
-                                } else {
-                                    yPos = y - valueOffset;
-                                }
-                                drawValue(c, valText, x, yPos, dataSet.getValueTextColor(j));
-                            }
-                            bufferIndex += 4;
-                        }
-                    }
-                }
-            }
-        }
-
-        @Override
-        protected void drawDataSet(Canvas c, IBarDataSet dataSet, int index) {
-            Transformer trans = mChart.getTransformer(dataSet.getAxisDependency());
-            mRenderPaint.setAntiAlias(true);
-
-            BarBuffer buffer = mBarBuffers[index];
-            buffer.setPhases(mAnimator.getPhaseX(), mAnimator.getPhaseY());
-            buffer.setBarWidth(mChart.getBarData().getBarWidth());
-            buffer.setInverted(mChart.isInverted(dataSet.getAxisDependency()));
-            buffer.feed(dataSet);
-            trans.pointValuesToPixel(buffer.buffer);
-
-            final boolean isSingleColor = dataSet.getColors().size() == 1;
-
-            for (int j = 0; j < buffer.size(); j += 4) {
-                if (!mViewPortHandler.isInBoundsLeft(buffer.buffer[j + 2])) continue;
-                if (!mViewPortHandler.isInBoundsRight(buffer.buffer[j])) break;
-
-                if (!isSingleColor) {
-                    mRenderPaint.setColor(dataSet.getColor(j / 4));
-                } else {
-                    mRenderPaint.setColor(dataSet.getColor());
-                }
-
-                float left = buffer.buffer[j];
-                float top = buffer.buffer[j + 1];
-                float right = buffer.buffer[j + 2];
-                float bottom = buffer.buffer[j + 3];
-
-                float gap = Utils.convertDpToPixel(1.5f);
-                if (top < bottom) {
-                    top += gap;
-                    bottom -= gap;
-                } else {
-                    top -= gap;
-                    bottom += gap;
-                }
-
-                c.drawRoundRect(left, top, right, bottom, mRadius, mRadius, mRenderPaint);
-            }
-        }
-    }
 }

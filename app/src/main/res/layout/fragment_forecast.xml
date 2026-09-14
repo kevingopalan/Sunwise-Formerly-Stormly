@@ -22,6 +22,7 @@
             android:layout_height="56dp"
             android:padding="16dp"
             android:background="@android:color/transparent"
+            android:theme="@style/Theme.Material3.Dark"
             android:text="Location"
             android:textColor="?attr/colorOnSurface"
             android:ellipsize="end"
@@ -42,6 +43,7 @@
             android:paddingStart="12dp"
             android:paddingEnd="12dp"
             android:fontFamily="@font/montsemibold"
+            android:theme="@style/Theme.Material3.Dark"
             android:textAllCaps="false"
             android:letterSpacing="0.02"
             android:text="Save"
@@ -360,7 +362,7 @@
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/hourlyRecyclerView"
                 android:layout_width="match_parent"
-                android:layout_height="180dp"
+                android:layout_height="wrap_content"
                 android:layout_marginLeft="12dp"
                 android:layout_marginTop="10dp"
                 android:layout_marginRight="12dp"
@@ -371,33 +373,35 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/hourlyforecastlabel"
                 tools:ignore="UnusedAttribute" />
-            <TextView
-                android:id="@+id/dailyforecastlabel"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:layout_marginStart="12dp"
-                android:layout_marginTop="20dp"
-                android:text="Daily Forecast"
-                android:textSize="16dp"
-                android:fontFamily="@font/montsemibold"
-                android:textColor="@color/white"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/hourlyRecyclerView" />
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/dailyRecyclerView"
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="200dp"
-                android:layout_marginLeft="12dp"
-                android:clipToOutline="true"
-                android:clipChildren="true"
-                android:layout_marginRight="12dp"
-                android:layout_marginBottom="20dp"
-                android:layout_marginTop="10dp"
-                android:overScrollMode="never"
-                android:background="@drawable/mbclip"
+                android:layout_height="wrap_content"
+                android:id="@+id/dailygraphbetacontainer"
+                android:orientation="vertical"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/dailyforecastlabel"
-                tools:ignore="UnusedAttribute" />
+                app:layout_constraintTop_toBottomOf="@+id/hourlyRecyclerView"
+                android:layout_margin="12dp"
+                android:fontFamily = "@font/montsemibold">
+                <TextView
+                    android:id="@+id/dailygraphlabelbeta"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/montsemibold"
+                    android:layout_marginBottom="10dp"
+                    android:text="Daily Forecast"
+                    android:textSize="16dp"
+                    android:textColor="?attr/colorOnSurface" />
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/dailygraphbeta"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:clipToOutline="true"
+                    android:clipChildren="true"
+                    android:outlineProvider="background"
+                    android:background="@drawable/mbclip"
+                    android:overScrollMode="never"
+                    />
+            </LinearLayout>
 
             <com.google.android.gms.ads.AdView
                 android:id="@+id/forecast_ad"
@@ -406,7 +410,7 @@
                 android:layout_marginTop="20dp"
                 app:adSize="MEDIUM_RECTANGLE"
                 app:adUnitId="@string/ad_unit_forecast_fragment"
-                app:layout_constraintTop_toBottomOf="@+id/dailyRecyclerView" />
+                app:layout_constraintTop_toBottomOf="@+id/dailygraphbetacontainer" />
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -443,37 +447,10 @@
 
                 </HorizontalScrollView>
             </LinearLayout>
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:padding="20dp"
-                android:id="@+id/dailygraph"
-                android:orientation="vertical"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/hourlygraph"
-                android:layout_margin="12dp"
-                android:background="@drawable/main_background"
-                android:fontFamily = "@font/montsemibold">
-                <TextView
-                    android:id="@+id/dailygraphlabel"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="@font/montsemibold"
-                    android:layout_marginBottom="10dp"
-                    android:text="Daily Forecast graph"
-                    android:textSize="16dp"
-                    android:textColor="?attr/colorOnSurface" />
-                <com.github.mikephil.charting.charts.BarChart
-                    android:id="@+id/dailyBarGraph"
-                    android:layout_width="match_parent"
-                    android:layout_height="240dp"
-                    android:layout_marginTop="12dp" />
-            </LinearLayout>
-
             <View
-                app:layout_constraintTop_toBottomOf="@id/dailygraph"
+                app:layout_constraintTop_toBottomOf="@id/hourlygraph"
                 android:layout_width="match_parent"
-                android:layout_height="20dp"/>
+                android:layout_height="120dp"/>
 
         </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.core.widget.NestedScrollView>

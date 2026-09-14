@@ -19,6 +19,10 @@ public class GeocodingRetryManager {
     private static final String TAG = "GeocodingRetryManager";
     private static final Map<String, GeocodingResponseParser.GeocodingResult> cache = new ConcurrentHashMap<>();
 
+    private static Locale getPreferredGeocoderLocale(Context context) {
+        return Locale.ENGLISH;
+    }
+
     public interface GeocodingSuccessCallback {
         void onSuccess(GeocodingResponseParser.GeocodingResult result);
     }
@@ -59,7 +63,7 @@ public class GeocodingRetryManager {
         if (Geocoder.isPresent()) {
             new Thread(() -> {
                 try {
-                    Geocoder geocoder = new Geocoder(context, Locale.getDefault());
+                    Geocoder geocoder = new Geocoder(context, getPreferredGeocoderLocale(context));
                     // Fetch multiple results to find a match for the requested country
                     List<Address> addresses = geocoder.getFromLocationName(address, 5);
                     Address bestMatch = null;
@@ -170,6 +174,7 @@ public class GeocodingRetryManager {
                 public Map<String, String> getHeaders() {
                     Map<String, String> headers = new HashMap<>();
                     headers.put("User-Agent", userAgent);
+                    headers.put("Accept-Language", "en");
                     return headers;
                 }
             };
@@ -183,6 +188,7 @@ public class GeocodingRetryManager {
                 public Map<String, String> getHeaders() {
                     Map<String, String> headers = new HashMap<>();
                     headers.put("User-Agent", userAgent);
+                    headers.put("Accept-Language", "en");
                     return headers;
                 }
             };
@@ -228,7 +234,7 @@ public class GeocodingRetryManager {
         if (Geocoder.isPresent()) {
             new Thread(() -> {
                 try {
-                    Geocoder geocoder = new Geocoder(context, Locale.getDefault());
+                    Geocoder geocoder = new Geocoder(context, getPreferredGeocoderLocale(context));
                     List<Address> addresses = geocoder.getFromLocation(lat, lon, 1);
                     if (addresses != null && !addresses.isEmpty()) {
                         Address addr = addresses.get(0);
@@ -270,6 +276,7 @@ public class GeocodingRetryManager {
             public Map<String, String> getHeaders() {
                 Map<String, String> headers = new HashMap<>();
                 headers.put("User-Agent", userAgent);
+                headers.put("Accept-Language", "en");
                 return headers;
             }
         };
